@@ -1,0 +1,48 @@
+# Web / API
+fastapi>=0.115.0,<0.117
+uvicorn[standard]>=0.32.0,<0.34
+python-multipart>=0.0.17,<0.1
+jinja2>=3.1.4,<4
+
+# Pydantic
+pydantic[email]>=2.10.0,<3
+pydantic-settings>=2.6.0,<3
+email-validator>=2.2.0,<3
+
+# Database
+sqlalchemy[asyncio]>=2.0.36,<2.1
+asyncpg>=0.30.0,<0.31
+aiosqlite>=0.20.0,<0.22
+alembic>=1.14.0,<2
+
+# OpenAI / Agents
+# - openai-agents >= 0.0.17 requires openai >= 1.66.5
+# - we cap below openai 2.x because the Realtime bridge targets the 1.x event shape
+openai>=1.66.5,<2.0.0
+openai-agents>=0.0.17,<0.3.0
+
+# Twilio
+twilio>=9.3.0,<10
+
+# Realtime / WebSocket / HTTP
+websockets>=13.0,<14
+httpx>=0.28.0,<0.29
+
+# Email
+aiosmtplib>=3.0.0,<4
+
+# Utils
+python-dotenv>=1.0.0,<2
+loguru>=0.7.0,<1
+tenacity>=9.0.0,<10
+phonenumbers>=8.13.0,<9
+
+# Vision (Pillow for image preprocessing)
+Pillow>=11.0.0,<12
+
+# Stdlib audioop was removed in Python 3.13 — pull in the LTS shim
+audioop-lts>=0.2.1; python_version >= "3.13"
+
+# Dev
+pytest>=8.3.0,<9
+pytest-asyncio>=0.25.0,<0.26
