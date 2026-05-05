@@ -179,6 +179,12 @@ class RealtimeBridge:
             if etype == "response.audio.delta":
                 await self._send_audio_to_twilio(event["delta"])
 
+            elif etype == "input_audio_buffer.speech_started":
+                # Caller barged in. Tell Twilio to flush whatever's queued
+                # for playback so the agent goes silent immediately.
+                # The OpenAI side will also cancel the in-flight response.
+                await self._send_clear_to_twilio()
+
             elif etype == "response.audio_transcript.done":
                 transcript = event.get("transcript", "")
                 if transcript and self._call_sid:
@@ -219,6 +225,19 @@ class RealtimeBridge:
                 "streamSid": self._stream_sid,
                 "media": {"payload": payload_b64},
             }
+        )
+
+    async def _send_clear_to_twilio(self) -> None:
+        """Flush any pending outbound audio in Twilio's playback queue.
+
+        Used for barge-in: when the caller starts talking, we want the
+        agent to go silent immediately rather than finish its sentence.
+        """
+        if not self._stream_sid:
+            return
+        logger.debug("barge-in — clearing Twilio playback queue")
+        await self._twilio_ws.send_json(
+            {"event": "clear", "streamSid": self._stream_sid}
         )
 
     # ------------------------------------------------------------------

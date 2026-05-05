@@ -236,6 +236,14 @@ class MicVoiceClient:
             if etype == "response.audio.delta":
                 self._speaker_buffer.append(base64.b64decode(event["delta"]))
 
+            elif etype == "input_audio_buffer.speech_started":
+                # User just started talking — drop any agent audio still
+                # buffered for playback so we go silent immediately.
+                # The server-side will also cancel the in-flight response.
+                if self._speaker_buffer:
+                    logger.debug("barge-in detected — clearing speaker buffer")
+                    self._speaker_buffer.clear()
+
             elif etype == "response.audio_transcript.done":
                 transcript = event.get("transcript", "")
                 if transcript:

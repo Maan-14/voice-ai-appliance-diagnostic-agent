@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, Type
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.agents.schemas import (
     BookAppointmentInput,
@@ -94,7 +94,27 @@ class ToolRegistry:
         self, name: str, raw_args: Dict[str, Any], context: ToolContext
     ) -> Dict[str, Any]:
         defn = self.get(name)
-        validated = defn.input_schema.model_validate(raw_args)
+        try:
+            validated = defn.input_schema.model_validate(raw_args)
+        except ValidationError as exc:
+            # Surface a tight, actionable error to the model instead of a
+            # wall of Pydantic noise. The model is expected to ask the
+            # customer to clarify and retry the tool call with corrected args.
+            messages = [
+                f"{'.'.join(str(p) for p in err['loc'])}: {err['msg']}"
+                for err in exc.errors()
+            ]
+            return {
+                "status": "validation_error",
+                "tool": name,
+                "errors": messages,
+                "guidance": (
+                    "One or more arguments were rejected. Apologise to the "
+                    "customer if needed, ask for the missing or invalid "
+                    "information clearly, then retry the tool call with "
+                    "corrected arguments. Do not retry with the same values."
+                ),
+            }
         return await defn.handler(validated, context)
 
 
