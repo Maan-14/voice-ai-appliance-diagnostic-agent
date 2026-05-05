@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(DATABASE_URL='sqlite+aiosqlite:///./data/test.db' python -m scripts.seed)"
+    ]
+  }
+}
