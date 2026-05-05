@@ -78,6 +78,26 @@ voice cloning, on-prem TTS), [`realtime_bridge.py`](app/services/realtime_bridge
 is the single seam to split — swap the Realtime WebSocket for a discrete
 STT → LLM → TTS cascade without touching the agent, tools, or routes.
 
+### Voice transport — current demo state
+
+There are **two** audio transports wired into this codebase, both
+exercising the identical agent / prompt / tools / DB layer:
+
+| Transport | Path | Status | Used for |
+|---|---|---|---|
+| **Twilio Voice + Media Streams** | `app/routes/voice.py` + [`realtime_bridge.py`](app/services/realtime_bridge.py) | Code complete, not currently demoable — Twilio account is restricted from provisioning new long-code numbers (a known trial-account restriction) | Production / phone calls |
+| **Mac mic + speaker** | [`scripts/mic_voice.py`](scripts/mic_voice.py) | Working — used for the live demo | Local dev + demos without telephony |
+
+Both transports speak the same OpenAI Realtime API session protocol,
+register the same tool set, and write to the same Postgres tables — only
+the audio source/sink differs. The Twilio integration code is intact and
+documented; once a number is available, no agent code changes are
+required to switch over.
+
+For the current demo, run `python -m scripts.mic_voice` — your Mac mic
+becomes the caller, your speaker becomes the phone earpiece. Everything
+else (diagnosis, scheduling, image upload, vision analysis) is identical.
+
 ---
 
 ## Layered design

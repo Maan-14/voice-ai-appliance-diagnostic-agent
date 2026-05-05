@@ -11,8 +11,15 @@ from functools import lru_cache
 from pathlib import Path
 from typing import List, Literal
 
+from dotenv import load_dotenv
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Load .env into os.environ once, before any sub-settings class is constructed.
+# Without this, pydantic-settings would only inject .env values into the
+# top-level Settings model — the nested AppSettings/OpenAISettings/etc.
+# constructed via `default_factory` would only see actual os.environ values.
+load_dotenv(override=False)
 
 
 class AppSettings(BaseSettings):

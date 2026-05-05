@@ -15,7 +15,7 @@ import asyncio
 import json
 from typing import Any, Dict, Optional
 
-import websockets
+from websockets.asyncio.client import connect as ws_connect
 from fastapi import WebSocket, WebSocketDisconnect
 
 from app.agents.prompts import REALTIME_GREETING, SYSTEM_PROMPT
@@ -65,7 +65,7 @@ class RealtimeBridge:
             "OpenAI-Beta": "realtime=v1",
         }
         try:
-            async with websockets.connect(url, additional_headers=headers) as oai_ws:
+            async with ws_connect(url, additional_headers=headers) as oai_ws:
                 self._openai_ws = oai_ws
                 await self._configure_session()
 
