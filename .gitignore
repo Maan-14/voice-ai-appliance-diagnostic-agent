@@ -1,8 +1,5 @@
 task.md
 .claude
-.claude/settings.json
-
-docs
 
 __pycache__/
 *.py[cod]
