@@ -92,7 +92,7 @@ class DiagnosticAgentFactory:
 
     def build_agent(self) -> Agent[ToolContext]:
         return Agent[ToolContext](
-            name="Aria — Sears Diagnostic Agent",
+            name="Aria — Diagnostic Agent",
             instructions=SYSTEM_PROMPT,
             model=get_settings().openai.model,
             tools=[

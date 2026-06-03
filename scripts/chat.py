@@ -29,7 +29,7 @@ logger = get_logger("chat")
 
 BANNER = """
 ┌─────────────────────────────────────────────────────────────┐
-│  Aria — Sears Diagnostic Agent  (text mode)                │
+│  Aria — Diagnostic Agent  (text mode)                │
 │  Multi-turn chat against the same agent the phone uses.    │
 │                                                             │
 │  Commands:  /context  /reset  /quit                        │

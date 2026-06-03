@@ -1,5 +1,7 @@
 task.md
 .claude
+docs/
+docs/PRESENTATION_BRIEF.md
 
 __pycache__/
 *.py[cod]

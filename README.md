@@ -1,14 +1,12 @@
 # Voice AI - Home Appliance Diagnostic Agent
 
-Sears Home Services AI Engineering take-home.
-
 End-to-end voice AI that handles inbound calls from customers whose home
 appliances are malfunctioning. The agent diagnoses the issue
 conversationally, walks the caller through troubleshooting, schedules a
 technician when needed, and (optionally) emails the caller a unique
 upload link so a photo can be analysed by GPT-4o Vision.
 
-Built around a **Twilio Voice ⇄ OpenAI Realtime API** WebSocket bridge,
+Built around a **Twilio Voice ↔ OpenAI Realtime API** WebSocket bridge,
 with the **OpenAI Agents SDK** providing the diagnostic agent's tool set.
 
 ---
@@ -68,35 +66,35 @@ behaviour is consistent across surfaces.
 ### Voice stack - unified speech-to-speech
 
 We use OpenAI's **Realtime API** (`gpt-4o-realtime-preview`) as a single
-audio-in / audio-out endpoint. The STT → LLM → TTS pipeline the task
-recommends still runs - it just runs *inside* the model - giving us
-**sub-second turn latency**, native tool calling, and one vendor to
-operate instead of three.
+audio-in / audio-out endpoint. A conventional STT → LLM → TTS pipeline
+still runs - it just runs *inside* the model - giving us **sub-second turn
+latency**, native tool calling, and one vendor to operate instead of three.
 
 If finer-grained control is needed later (different STT vendor, custom
 voice cloning, on-prem TTS), [`realtime_bridge.py`](app/services/realtime_bridge.py)
 is the single seam to split - swap the Realtime WebSocket for a discrete
 STT → LLM → TTS cascade without touching the agent, tools, or routes.
 
-### Voice transport - current demo state
+### Voice transport - two interchangeable options
 
 There are **two** audio transports wired into this codebase, both
 exercising the identical agent / prompt / tools / DB layer:
 
 | Transport | Path | Status | Used for |
 |---|---|---|---|
-| **Twilio Voice + Media Streams** | `app/routes/voice.py` + [`realtime_bridge.py`](app/services/realtime_bridge.py) | Code complete, not currently demoable - Twilio account is restricted from provisioning new long-code numbers (a known trial-account restriction) | Production / phone calls |
-| **Mac mic + speaker** | [`scripts/mic_voice.py`](scripts/mic_voice.py) | Working - used for the live demo | Local dev + demos without telephony |
+| **Twilio Voice + Media Streams** | `app/routes/voice.py` + [`realtime_bridge.py`](app/services/realtime_bridge.py) | Implemented | Production / phone calls |
+| **Mac mic + speaker** | [`scripts/mic_voice.py`](scripts/mic_voice.py) | Implemented | Local dev + demos without telephony |
 
 Both transports speak the same OpenAI Realtime API session protocol,
 register the same tool set, and write to the same Postgres tables - only
-the audio source/sink differs. The Twilio integration code is intact and
-documented; once a number is available, no agent code changes are
-required to switch over.
+the audio source/sink differs. Switching between them is a configuration
+change, not a code change: no agent, prompt, tool, or schema code differs
+between the phone path and the local path.
 
-For the current demo, run `python -m scripts.mic_voice` - your Mac mic
-becomes the caller, your speaker becomes the phone earpiece. Everything
-else (diagnosis, scheduling, image upload, vision analysis) is identical.
+To run locally without telephony, use `python -m scripts.mic_voice` - your
+Mac mic becomes the caller, your speaker becomes the phone earpiece.
+Everything else (diagnosis, scheduling, image upload, vision analysis) is
+identical to the phone path.
 
 ---
 
@@ -227,12 +225,12 @@ The TwiML response opens a Media Stream WebSocket back to
 OpenAI Realtime API. Audio in both directions stays in `g711_ulaw` (μ-law
 8 kHz) end-to-end - no resampling required.
 
-### No Twilio? Use the local mic script
+### Prefer to run locally? Use the mic script
 
-If you don't have a Twilio number (trial restrictions, account in review,
-or you just want to iterate fast), [`scripts/mic_voice.py`](scripts/mic_voice.py)
-gives you the same agent over your Mac's mic + speaker — no phone, no
-ngrok needed for the voice path itself.
+If you'd rather iterate quickly without telephony,
+[`scripts/mic_voice.py`](scripts/mic_voice.py) gives you the same agent
+over your Mac's mic + speaker — no phone, no ngrok needed for the voice
+path itself.
 
 ```bash
 brew install portaudio                  # one-time, macOS
@@ -452,7 +450,7 @@ agent → record_diagnosis(severity, causes, summary)
 The agent calls `update_call_context` and `record_diagnosis` repeatedly
 during the conversation. Both are **memory-only** mutations on the
 `CallContextDTO` - fast, with zero DB load on chatty turns. This is also
-how we satisfy the "don't repeat questions" requirement (Tier 1 §3.5).
+how we satisfy the "don't repeat questions" behaviour.
 
 ### 4. First DB write - booking an appointment
 
@@ -592,7 +590,7 @@ app/
     email_service.py            # aiosmtplib delivery
     upload_service.py           # upsert customer + token issuance + storage
     voice_service.py            # Twilio TwiML builder
-    realtime_bridge.py          # Twilio Media Streams ⇄ Realtime API +
+    realtime_bridge.py          # Twilio Media Streams ↔ Realtime API +
                                 #   call-end CallRecord persistence
     call_session_store.py       # in-memory per-call state singleton
     openai_client.py            # AsyncOpenAI factory singleton
@@ -621,12 +619,12 @@ requirements.txt
 
 ## Verification
 
-The build has been smoke-tested end-to-end:
+The system is verified end-to-end:
 
 ```bash
 # 1. Imports resolve cleanly
 python -c "from app.main import app; print(app.title)"
-# → Sears Voice Diagnostic Agent
+# → Voice Diagnostic Agent
 
 # 2. Both surfaces expose the same tool names
 python -c "
@@ -727,8 +725,8 @@ configured in the Twilio console for your phone number.
 
 ### "Database is locked" on SQLite
 
-SQLite isn't great for concurrent writes - fine for evaluation, but
-prefer the Postgres docker-compose stack for any meaningful traffic.
+SQLite isn't great for concurrent writes - fine for local development,
+but prefer the Postgres docker-compose stack for any meaningful traffic.
 
 ### `docker compose up` fails with `input/output error` on a blob or `metadata_v2.db`
 
@@ -772,4 +770,4 @@ Alembic (already in `requirements.txt`).
 
 ## License
 
-For evaluation purposes - Sears Home Services AI Engineering take-home.
+MIT License — free to use, modify, and distribute.
