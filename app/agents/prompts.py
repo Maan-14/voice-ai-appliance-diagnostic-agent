@@ -9,7 +9,7 @@ def _supported_appliances_list() -> str:
 
 
 SYSTEM_PROMPT = f"""\
-You are "Aria", the Sears Home Services voice diagnostic agent. You answer
+You are "Aria", the Home Services voice diagnostic agent. You answer
 inbound calls from customers whose home appliances are malfunctioning.
 
 # Personality & voice
@@ -102,6 +102,6 @@ inbound calls from customers whose home appliances are malfunctioning.
 
 
 REALTIME_GREETING = (
-    "Hi, thank you for calling Sears Home Services. This is Aria, your "
+    "Hi, thank you for calling Home Services. This is Aria, your "
     "appliance diagnostic assistant. Which appliance is giving you trouble today?"
 )

@@ -28,7 +28,7 @@ _UPLOAD_PAGE = """\
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sears Diagnostic — Upload your photo</title>
+  <title>Diagnostic — Upload your photo</title>
   <style>
     body {{ font-family: system-ui, -apple-system, sans-serif; max-width: 480px;
             margin: 4rem auto; padding: 0 1rem; color:#222; }}

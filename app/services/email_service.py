@@ -55,14 +55,14 @@ class EmailService:
         appliance_type: str | None = None,
     ) -> None:
         appliance_text = f" {appliance_type}" if appliance_type else ""
-        subject = "Upload a photo of your appliance — Sears Diagnostic"
+        subject = "Upload a photo of your appliance — Diagnostic"
         text = (
             "Hello,\n\n"
             f"To help us diagnose your{appliance_text} issue more accurately, please "
             f"upload a clear photo of the affected area using the link below:\n\n"
             f"{upload_url}\n\n"
             "This link will expire in 24 hours.\n\n"
-            "Thank you,\nSears Diagnostic Team"
+            "Thank you,\nDiagnostic Team"
         )
         html = (
             f"<p>Hello,</p>"
@@ -70,6 +70,6 @@ class EmailService:
             f"upload a clear photo using the link below:</p>"
             f'<p><a href="{upload_url}">Upload your photo</a></p>'
             f"<p style=\"color:#666;font-size:12px\">This link expires in 24 hours.</p>"
-            f"<p>— Sears Diagnostic Team</p>"
+            f"<p>— Diagnostic Team</p>"
         )
         await self.send(to_address, subject, text, html)

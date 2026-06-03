@@ -23,7 +23,7 @@ load_dotenv(override=False)
 
 
 class AppSettings(BaseSettings):
-    name: str = Field(default="Sears Voice Diagnostic Agent", alias="APP_NAME")
+    name: str = Field(default="Voice Diagnostic Agent", alias="APP_NAME")
     env: Literal["development", "staging", "production"] = Field(
         default="development", alias="APP_ENV"
     )
@@ -74,9 +74,9 @@ class EmailSettings(BaseSettings):
     smtp_username: str = Field(default="", alias="SMTP_USERNAME")
     smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
     from_email: str = Field(
-        default="noreply@searsdiagnostic.example.com", alias="SMTP_FROM_EMAIL"
+        default="noreply@diagnostic.example.com", alias="SMTP_FROM_EMAIL"
     )
-    from_name: str = Field(default="Sears Diagnostic", alias="SMTP_FROM_NAME")
+    from_name: str = Field(default="Diagnostic Agent", alias="SMTP_FROM_NAME")
     use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
 
     model_config = SettingsConfigDict(extra="ignore", populate_by_name=True)
