@@ -1,6 +1,6 @@
-# Presentation Brief — Sears Voice Diagnostic Agent
+# Presentation Brief — Voice Diagnostic Agent
 
-**Audience:** internal lead presenting to Sears Home Services / Transformco.
+**Audience:** internal lead presenting to Home Services.
 **Purpose:** quick reference during the call. Read top-to-bottom in
 ~5 minutes; jump to specific sections during Q&A.
 
