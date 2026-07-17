@@ -23,7 +23,7 @@ from app.config.logging_config import get_logger
 from app.config.settings import get_settings
 from app.database.session import get_session
 from app.dto.call import CallContextDTO
-from app.models.upload_link import UploadLink, UploadStatus
+from app.models.upload_link import UploadLink
 from app.repositories.upload_repo import UploadLinkRepository
 from app.services.call_session_store import call_session_store
 from app.services.scheduling_service import SchedulingService

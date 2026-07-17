@@ -1,0 +1,14 @@
+# Tooling configuration only — dependency management stays in requirements.txt.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["data", "uploads"]
+
+[tool.ruff.lint]
+# Pragmatic set: pyflakes + core pycodestyle + bugbear. Import-sorting and
+# wholesale reformatting rules are intentionally left out to keep diffs small
+# on the existing codebase.
+select = ["E4", "E7", "E9", "F", "W", "B"]
+# B008: FastAPI's `Depends(...)` in argument defaults is idiomatic.
+ignore = ["B008"]
