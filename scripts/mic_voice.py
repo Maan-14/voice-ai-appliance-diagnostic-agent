@@ -126,9 +126,9 @@ class MicVoiceClient:
         self._loop = asyncio.get_running_loop()
 
         url = REALTIME_URL_TMPL.format(model=self._settings.openai.realtime_model)
+        # GA Realtime: Authorization only — do not send OpenAI-Beta: realtime=v1
         headers = {
             "Authorization": f"Bearer {self._settings.openai.api_key}",
-            "OpenAI-Beta": "realtime=v1",
         }
 
         print(f"🔌 Connecting to {self._settings.openai.realtime_model}…")
@@ -137,13 +137,16 @@ class MicVoiceClient:
             await self._configure_session()
             print("✓ Session configured")
 
+            in_dev, out_dev = sd.default.device
             with sd.InputStream(
+                device=in_dev,
                 samplerate=SAMPLE_RATE,
                 channels=CHANNELS,
                 dtype="int16",
                 blocksize=BLOCK_FRAMES,
                 callback=self._mic_callback,
             ), sd.OutputStream(
+                device=out_dev,
                 samplerate=SAMPLE_RATE,
                 channels=CHANNELS,
                 dtype="int16",
@@ -174,20 +177,28 @@ class MicVoiceClient:
                 {
                     "type": "session.update",
                     "session": {
-                        "modalities": ["audio", "text"],
+                        "type": "realtime",
+                        "model": self._settings.openai.realtime_model,
                         "instructions": SYSTEM_PROMPT,
-                        "voice": self._settings.openai.tts_voice,
-                        "input_audio_format": "pcm16",
-                        "output_audio_format": "pcm16",
-                        "input_audio_transcription": {"model": "whisper-1"},
-                        "turn_detection": {
-                            "type": "server_vad",
-                            "threshold": 0.5,
-                            "prefix_padding_ms": 250,
-                            "silence_duration_ms": 600,
-                        },
+                        "output_modalities": ["audio"],
                         "tools": self._tools.realtime_specs(),
                         "tool_choice": "auto",
+                        "audio": {
+                            "input": {
+                                "format": {"type": "audio/pcm", "rate": SAMPLE_RATE},
+                                "transcription": {"model": "whisper-1"},
+                                "turn_detection": {
+                                    "type": "server_vad",
+                                    "threshold": 0.5,
+                                    "prefix_padding_ms": 250,
+                                    "silence_duration_ms": 600,
+                                },
+                            },
+                            "output": {
+                                "format": {"type": "audio/pcm", "rate": SAMPLE_RATE},
+                                "voice": self._settings.openai.tts_voice,
+                            },
+                        },
                     },
                 }
             )
@@ -200,7 +211,7 @@ class MicVoiceClient:
                 {
                     "type": "response.create",
                     "response": {
-                        "modalities": ["audio", "text"],
+                        "output_modalities": ["audio"],
                         "instructions": (
                             f'Say exactly this in a warm, professional tone: '
                             f'"{REALTIME_GREETING}"'
@@ -233,7 +244,7 @@ class MicVoiceClient:
             event = json.loads(raw)
             etype = event.get("type")
 
-            if etype == "response.audio.delta":
+            if etype in ("response.output_audio.delta", "response.audio.delta"):
                 self._speaker_buffer.append(base64.b64decode(event["delta"]))
 
             elif etype == "input_audio_buffer.speech_started":
@@ -244,7 +255,10 @@ class MicVoiceClient:
                     logger.debug("barge-in detected — clearing speaker buffer")
                     self._speaker_buffer.clear()
 
-            elif etype == "response.audio_transcript.done":
+            elif etype in (
+                "response.output_audio_transcript.done",
+                "response.audio_transcript.done",
+            ):
                 transcript = event.get("transcript", "")
                 if transcript:
                     print(f"🤖 Aria: {transcript}")

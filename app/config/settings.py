@@ -52,7 +52,7 @@ class OpenAISettings(BaseSettings):
     api_key: str = Field(default="", alias="OPENAI_API_KEY")
     model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
     realtime_model: str = Field(
-        default="gpt-4o-realtime-preview-2024-12-17", alias="OPENAI_REALTIME_MODEL"
+        default="gpt-realtime", alias="OPENAI_REALTIME_MODEL"
     )
     vision_model: str = Field(default="gpt-4o", alias="OPENAI_VISION_MODEL")
     tts_voice: str = Field(default="alloy", alias="OPENAI_TTS_VOICE")
