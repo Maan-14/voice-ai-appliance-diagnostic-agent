@@ -16,8 +16,8 @@ Prereqs:
 Run:
     python -m scripts.mic_voice
 
-Tip: wear headphones. Without echo cancellation the agent will hear its
-own voice through your laptop speaker and start talking over itself.
+Tip: the mic is muted while Aria is speaking (half-duplex) so laptop
+speakers don't feed her voice back into the mic. Headphones still help.
 """
 from __future__ import annotations
 
@@ -76,6 +76,10 @@ class MicVoiceClient:
         # speaker_buffer is a deque of bytes — the speaker callback drains it.
         self._speaker_buffer: deque[bytes] = deque()
         self._pending_calls: Dict[str, Dict[str, str]] = {}
+
+        # Half-duplex: mute mic upload while agent audio is playing so the
+        # laptop speaker cannot re-enter the mic and create a feedback loop.
+        self._agent_speaking = False
 
         self._call_ctx = CallContextDTO(
             call_sid="mic-local",
@@ -229,6 +233,8 @@ class MicVoiceClient:
         assert self._ws is not None
         while True:
             chunk = await self._mic_queue.get()
+            if self._agent_speaking:
+                continue  # drop — don't let speaker audio re-enter as "user"
             await self._ws.send(
                 json.dumps(
                     {
@@ -238,6 +244,20 @@ class MicVoiceClient:
                 )
             )
 
+    async def _unmute_after_playback(self) -> None:
+        """Re-open the mic once local playback finishes + a short echo tail."""
+        while self._speaker_buffer:
+            await asyncio.sleep(0.05)
+        await asyncio.sleep(0.30)  # room / speaker echo tail
+        if self._speaker_buffer:
+            return  # new agent audio started; another done event will retry
+        while not self._mic_queue.empty():
+            try:
+                self._mic_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+        self._agent_speaking = False
+
     async def _openai_to_speaker(self) -> None:
         assert self._ws is not None
         async for raw in self._ws:
@@ -245,12 +265,20 @@ class MicVoiceClient:
             etype = event.get("type")
 
             if etype in ("response.output_audio.delta", "response.audio.delta"):
+                self._agent_speaking = True
                 self._speaker_buffer.append(base64.b64decode(event["delta"]))
 
+            elif etype in (
+                "response.output_audio.done",
+                "response.audio.done",
+                "response.done",
+            ):
+                # Audio may still be in the local speaker buffer — wait it out.
+                asyncio.create_task(self._unmute_after_playback())
+
             elif etype == "input_audio_buffer.speech_started":
-                # User just started talking — drop any agent audio still
-                # buffered for playback so we go silent immediately.
-                # The server-side will also cancel the in-flight response.
+                # Only relevant when mic is open (user barge-in). While muted
+                # we never send audio, so this should not fire from echo.
                 if self._speaker_buffer:
                     logger.debug("barge-in detected — clearing speaker buffer")
                     self._speaker_buffer.clear()
@@ -343,7 +371,7 @@ async def main() -> None:
     print()
     print("┌──────────────────────────────────────────────────────────────┐")
     print("│  Aria — Voice mode (Mac mic + speaker, no Twilio)            │")
-    print("│  Wear headphones to avoid echo. Ctrl+C to stop.              │")
+    print("│  Mic mutes while Aria speaks. Ctrl+C to stop.                │")
     print("└──────────────────────────────────────────────────────────────┘")
 
     client = MicVoiceClient()
