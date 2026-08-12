@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, WebSocket
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.config.settings import get_settings
 from app.services import aria_web_service as svc
+from app.services.browser_realtime_bridge import BrowserRealtimeBridge
 
 router = APIRouter(prefix="/api/aria", tags=["aria-web"])
 
@@ -147,3 +148,10 @@ async def status() -> Dict[str, Any]:
         "app": settings.app.name,
         "env": settings.app.env,
     }
+
+
+@router.websocket("/ws/realtime")
+async def browser_realtime(ws: WebSocket) -> None:
+    """Browser Talk-to-ARIA: speech ↔ OpenAI Realtime ↔ speech (PCM16)."""
+    bridge = BrowserRealtimeBridge(ws)
+    await bridge.run()

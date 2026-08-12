@@ -413,6 +413,14 @@ a { color: inherit; text-decoration: none; }
   opacity: 0.94;
 }
 .voice-caption.muted { color: var(--faint); font-size: 0.95rem; }
+.voice-hint {
+  margin: 0.4rem auto 0;
+  max-width: 26rem;
+  font-size: 0.78rem;
+  color: var(--faint);
+  text-align: center;
+  line-height: 1.35;
+}
 .voice-controls {
   margin-top: 2.5rem;
   display: flex;
@@ -435,6 +443,13 @@ a { color: inherit; text-decoration: none; }
   margin: 0 0 1.5rem;
   color: var(--muted);
   line-height: 1.5;
+}
+.ended-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: center;
+  margin-top: 0.25rem;
 }
 
 /* Ops / History / Settings */
