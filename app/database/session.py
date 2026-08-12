@@ -9,17 +9,37 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, AsyncIterator
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from app.config.settings import get_settings
 from app.config.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def _is_sqlite(url: str) -> bool:
+    return url.startswith("sqlite")
+
+
+def _configure_sqlite(sync_engine) -> None:
+    """WAL + busy timeout so Streamlit/uvicorn can share the local SQLite file."""
+
+    @event.listens_for(sync_engine, "connect")
+    def _sqlite_on_connect(dbapi_conn, _connection_record) -> None:  # noqa: ANN001
+        cursor = dbapi_conn.cursor()
+        try:
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=30000")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+        finally:
+            cursor.close()
 
 
 class DatabaseManager:
@@ -37,19 +57,28 @@ class DatabaseManager:
         if self._initialized:
             return
         settings = get_settings()
-        self._engine: AsyncEngine = create_async_engine(
-            settings.database.url,
-            echo=settings.database.echo,
-            pool_pre_ping=True,
-            future=True,
-        )
+        url = settings.database.url
+        engine_kwargs: dict = {
+            "echo": settings.database.echo,
+            "pool_pre_ping": True,
+            "future": True,
+        }
+        if _is_sqlite(url):
+            # aiosqlite: wait up to 30s on lock instead of failing immediately
+            engine_kwargs["connect_args"] = {"timeout": 30}
+            engine_kwargs["poolclass"] = NullPool
+
+        self._engine: AsyncEngine = create_async_engine(url, **engine_kwargs)
+        if _is_sqlite(url):
+            _configure_sqlite(self._engine.sync_engine)
+
         self._session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
             bind=self._engine,
             expire_on_commit=False,
             class_=AsyncSession,
         )
         self._initialized = True
-        logger.info("DatabaseManager initialised | url={}", settings.database.url)
+        logger.info("DatabaseManager initialised | url={}", url)
 
     @property
     def engine(self) -> AsyncEngine:
@@ -96,6 +125,7 @@ async def init_db() -> None:
         appointment,
         upload_link,
         call_record,
+        conversation,
     )
 
     async with db_manager.engine.begin() as conn:

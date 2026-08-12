@@ -1,13 +1,16 @@
-# Voice AI - Home Appliance Diagnostic Agent
+# ARIA — Home Appliance Diagnostic Agent
 
-End-to-end voice AI that handles inbound calls from customers whose home
-appliances are malfunctioning. The agent diagnoses the issue
-conversationally, walks the caller through troubleshooting, schedules a
-technician when needed, and (optionally) emails the caller a unique
-upload link so a photo can be analysed by GPT-4o Vision.
+Voice (and text) AI that helps people whose home appliances are acting up.
+ARIA diagnoses the issue in a conversation, walks through safe
+troubleshooting, books a technician when needed, and can email a unique
+link so a photo can be checked with GPT-4o Vision.
+
+**Talk to ARIA in the browser** at <http://localhost:8000/> (text chat or
+hands-free voice). **Phone calls** still go through Twilio ↔ OpenAI
+Realtime. Both surfaces share the same agent tools and database.
 
 Built around a **Twilio Voice ↔ OpenAI Realtime API** WebSocket bridge,
-with the **OpenAI Agents SDK** providing the diagnostic agent's tool set.
+with the **OpenAI Agents SDK** powering text chat and the web product.
 
 ---
 
@@ -17,16 +20,18 @@ with the **OpenAI Agents SDK** providing the diagnostic agent's tool set.
 2. [Layered design](#layered-design)
 3. [Quick start (Docker)](#quick-start-docker)
 4. [Local dev (no Docker)](#local-dev-no-docker)
-5. [Exposing to Twilio](#exposing-to-twilio)
-6. [Environment variables](#environment-variables)
-7. [Conversation flow](#conversation-flow)
-8. [Agent tools](#agent-tools)
-9. [Database schema](#database-schema)
-10. [Database flow](#database-flow)
-11. [HTTP / WebSocket API](#http--websocket-api)
-12. [Project layout](#project-layout)
-13. [Verification](#verification)
-14. [Troubleshooting](#troubleshooting)
+5. [Talk to ARIA (web)](#talk-to-aria-web)
+6. [Voice demo (mic)](#voice-demo-mic)
+7. [Exposing to Twilio](#exposing-to-twilio)
+8. [Environment variables](#environment-variables)
+9. [Conversation flow](#conversation-flow)
+10. [Agent tools](#agent-tools)
+11. [Database schema](#database-schema)
+12. [Database flow](#database-flow)
+13. [HTTP / WebSocket API](#http--websocket-api)
+14. [Project layout](#project-layout)
+15. [Verification](#verification)
+16. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -54,14 +59,14 @@ with the **OpenAI Agents SDK** providing the diagnostic agent's tool set.
 
 The same `ToolRegistry` is reused by:
 
-- the **Realtime API bridge** (voice mode) - tool specs are sent in the
-  `session.update` event, function-call events are validated and dispatched
-  to handlers, and the result is shipped back as `function_call_output`;
-- the **OpenAI Agents SDK** `Agent` (text mode) - used for tests, CLI smoke
-  runs, and any future web-chat surface.
+- the **Realtime API bridge** (phone / mic voice) — tool specs go out in
+  `session.update`, function-call events are validated and dispatched, and
+  results go back as `function_call_output`;
+- the **OpenAI Agents SDK** `Agent` (text + browser voice) — used by the
+  web app at `/`, the CLI chat script, and tests.
 
-Both paths share identical tool names and Pydantic input schemas, so the
-behaviour is consistent across surfaces.
+Both paths share identical tool names and Pydantic input schemas, so
+behaviour stays consistent across surfaces.
 
 ### Voice stack - unified speech-to-speech
 
@@ -106,11 +111,12 @@ identical to the phone path.
 | Models | [`app/models/`](app/models/) | SQLAlchemy 2.0 ORM declarations |
 | DTOs | [`app/dto/`](app/dto/) | Pydantic schemas for inbound/outbound contracts |
 | Repositories | [`app/repositories/`](app/repositories/) | Async data-access - one repo per aggregate |
-| Services | [`app/services/`](app/services/) | Business logic - scheduling, vision, email, upload, voice, realtime bridge |
+| Services | [`app/services/`](app/services/) | Business logic — scheduling, vision, email, upload, voice bridge, web session |
 | Agents | [`app/agents/`](app/agents/) | OpenAI Agents SDK agent + tool registry + prompts |
-| Routes | [`app/routes/`](app/routes/) | FastAPI HTTP/WebSocket endpoints |
-| Utils | [`app/utils/`](app/utils/) | Pure helpers - tokens, normalization, audio codec |
-| Scripts | [`scripts/`](scripts/) | Operational scripts (seed, etc.) |
+| Routes | [`app/routes/`](app/routes/) | FastAPI HTTP/WebSocket endpoints (incl. `/api/aria`) |
+| Web UI | [`web/`](web/) | Product SPA — landing, text chat, hands-free voice |
+| Utils | [`app/utils/`](app/utils/) | Pure helpers — tokens, normalization, audio codec |
+| Scripts | [`scripts/`](scripts/) | Operational scripts (seed, chat, mic demo, etc.) |
 
 ### Key design choices
 
@@ -143,9 +149,9 @@ cp .env.example .env
 docker compose up --build
 ```
 
-What the compose pipeline does:
+Open <http://localhost:8000/> to talk to ARIA. Compose will:
 
-1. Starts Postgres 16 with a healthcheck.
+1. Start Postgres 16 with a healthcheck.
 2. Builds the Python 3.12 image from [`Dockerfile`](Dockerfile).
 3. Calls `init_db()` on app boot - creates all 8 tables with the right
    FKs, cascades, and indexes.
@@ -191,8 +197,70 @@ python -m scripts.seed              # idempotent
 uvicorn app.main:app --reload
 ```
 
-Visit <http://localhost:8000/health> - should return `{"status":"ok"}`.
-Visit <http://localhost:8000/docs> for the auto-generated Swagger UI.
+Then open:
+
+| URL | What you get |
+|-----|----------------|
+| <http://localhost:8000/> | **ARIA product** — landing, text chat, hands-free voice |
+| <http://localhost:8000/health> | Liveness JSON `{"status":"ok", …}` |
+| <http://localhost:8000/docs> | Swagger / OpenAPI |
+
+---
+
+## Talk to ARIA (web)
+
+This is the primary product UI. FastAPI serves a small SPA from [`web/`](web/)
+— not Streamlit.
+
+```bash
+uvicorn app.main:app --reload
+# open http://localhost:8000/
+```
+
+What you’ll see:
+
+1. **Landing** — choose **Chat with ARIA** or **Talk to ARIA** (voice).
+2. **Text chat** — ChatGPT-style thread. Your message shows immediately;
+   ARIA’s reply **streams** over SSE (`/api/aria/chat/stream`).
+3. **Voice** — full-screen orb, hands-free turns (mic → VAD → Whisper →
+   same diagnostic agent → TTS). Mic stays muted while ARIA is speaking
+   (half-duplex), so she doesn’t hear herself.
+4. **Operations** (`#/ops`) — a light summary of live/recent sessions.
+   Secondary to talking to the agent.
+
+Same agent, tools, and DB as phone calls. Browser voice is a
+STT → agent → TTS loop (great for demos). Production phone audio still
+uses Twilio + the Realtime bridge.
+
+> **Why not Streamlit?** Streamlit is fine for internal CRUD, but it
+> couldn’t do streaming chat, continuous hands-free voice, or a
+> product-feeling landing page. The old `streamlit run ui/streamlit_app.py`
+> entry now just points you at this web app.
+
+## Voice demo (mic)
+
+Same agent as the phone path, over your laptop mic + speaker — no Twilio
+or ngrok required for the voice loop itself.
+
+```bash
+git clone https://github.com/Maan-14/voice-ai-appliance-diagnostic-agent.git
+cd voice-ai-appliance-diagnostic-agent
+git checkout demo
+
+cp .env.example .env   # fill required values
+brew install portaudio
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+mkdir -p data uploads
+
+export SSL_CERT_FILE=$(python -c "import certifi; print(certifi.where())")
+python -m scripts.seed
+python -m scripts.mic_voice
+```
+
+Allow Microphone when asked. Wear headphones. Speak after Aria greets you.
+`Ctrl+C` to stop.
 
 ---
 
@@ -227,22 +295,11 @@ OpenAI Realtime API. Audio in both directions stays in `g711_ulaw` (μ-law
 
 ### Prefer to run locally? Use the mic script
 
-If you'd rather iterate quickly without telephony,
-[`scripts/mic_voice.py`](scripts/mic_voice.py) gives you the same agent
-over your Mac's mic + speaker — no phone, no ngrok needed for the voice
-path itself.
-
-```bash
-brew install portaudio                  # one-time, macOS
-pip install -r requirements.txt         # pulls sounddevice + numpy
-python -m scripts.mic_voice             # speak into your mic
-```
-
+See [Voice demo (mic)](#voice-demo-mic) for the full command sequence.
 Same prompt, same tools, same DB writes — only the audio transport
 differs. ngrok + uvicorn are still required if you want the **emailed
 upload links** to work (the customer's browser hits `/upload/{token}`
-through the public URL). Wear headphones to avoid the speaker echoing
-into the mic.
+through the public URL).
 
 ---
 
@@ -550,8 +607,17 @@ Every interesting question has a single-join answer:
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/` | Service info |
-| GET | `/health` | Liveness probe |
+| GET | `/` | ARIA web product (HTML) |
+| GET | `/static/…` | SPA assets (CSS / JS) |
+| GET | `/health` | Liveness / service info |
+| POST | `/api/aria/session` | Start a web text/voice session |
+| POST | `/api/aria/chat/stream` | Streamed agent turn (SSE) |
+| POST | `/api/aria/chat` | Non-streaming agent turn (voice loop) |
+| POST | `/api/aria/transcribe` | Whisper STT (browser voice) |
+| POST | `/api/aria/speak` | TTS audio (browser voice) |
+| POST | `/api/aria/session/persist` | Save session to `call_records` |
+| GET | `/api/aria/ops` | Compact operations summary |
+| GET | `/api/aria/status` | OpenAI / Twilio configured flags |
 | POST | `/voice/inbound` | Twilio voice webhook (returns TwiML) |
 | WS | `/ws/voice` | Twilio Media Stream → OpenAI Realtime bridge |
 | GET | `/upload/{token}` | Customer-facing upload form |
@@ -565,33 +631,22 @@ Every interesting question has a single-join answer:
 ```
 app/
   __init__.py
-  main.py                       # FastAPI factory + lifespan
+  main.py                       # FastAPI factory + lifespan + serves web/
   config/
     settings.py                 # singleton Pydantic Settings
     logging_config.py           # loguru + stdlib bridge
   models/                       # SQLAlchemy ORM
-    base.py                     #   Base + TimestampMixin
-    customer.py                 #   Customer  (UNIQUE phone)
-    technician.py               #   Technician
-    service_area.py             #   ServiceArea  (FK → technician, CASCADE)
-    specialty.py                #   Specialty    (FK → technician, CASCADE)
-    availability.py             #   Availability (FK → technician, CASCADE)
-    appointment.py              #   Appointment  (FKs → customer, technician,
-                                #                       availability)
-    upload_link.py              #   UploadLink   (FK → customer)
-    call_record.py              #   CallRecord   (FKs → customer, appointment)
-  dto/                          # Pydantic DTOs (customer, technician,
-                                #   appointment, diagnosis, call, upload)
-  repositories/                 # async data access (BaseRepository + 5 repos
-                                #   incl. CustomerRepository.upsert)
+    …
+  dto/                          # Pydantic DTOs
+  repositories/                 # async data access
   services/
+    aria_web_service.py         # web session + streamed agent turns + STT/TTS
     scheduling_service.py       # match technicians + upsert customer + book
     vision_service.py           # GPT-4o Vision JSON analysis
     email_service.py            # aiosmtplib delivery
     upload_service.py           # upsert customer + token issuance + storage
     voice_service.py            # Twilio TwiML builder
-    realtime_bridge.py          # Twilio Media Streams ↔ Realtime API +
-                                #   call-end CallRecord persistence
+    realtime_bridge.py          # Twilio Media Streams ↔ Realtime API
     call_session_store.py       # in-memory per-call state singleton
     openai_client.py            # AsyncOpenAI factory singleton
   agents/
@@ -600,15 +655,22 @@ app/
     tool_registry.py            # ToolRegistry + ToolDefinition
     tools.py                    # async handlers + ToolContext
     diagnostic_agent.py         # OpenAI Agents SDK wrapper
-  routes/                       # health, voice, upload
+  routes/                       # health, voice, upload, aria (web API)
   database/
     session.py                  # DatabaseManager singleton + init_db
   utils/
     helpers.py                  # tokens, normalization, time
     audio.py                    # μ-law / PCM16 codec helpers
+web/                            # ARIA product SPA (landing, chat, voice)
+  index.html
+  static/css/aria.css
+  static/js/                    # app, chat, voice, orb, api
 scripts/
   seed.py                       # idempotent seed (technicians + slots)
   reset_db.py                   # drop + recreate all project tables
+  chat.py                       # text REPL against the same agent
+  mic_voice.py                  # local Realtime mic demo
+ui/                             # legacy Streamlit pointer (optional)
 docker-compose.yml
 Dockerfile
 requirements.txt

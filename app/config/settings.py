@@ -55,6 +55,8 @@ class OpenAISettings(BaseSettings):
         default="gpt-realtime", alias="OPENAI_REALTIME_MODEL"
     )
     vision_model: str = Field(default="gpt-4o", alias="OPENAI_VISION_MODEL")
+    # Lightweight model for ChatGPT-style conversation titles
+    title_model: str = Field(default="gpt-4o-mini", alias="OPENAI_TITLE_MODEL")
     tts_voice: str = Field(default="alloy", alias="OPENAI_TTS_VOICE")
 
     model_config = SettingsConfigDict(extra="ignore", populate_by_name=True)

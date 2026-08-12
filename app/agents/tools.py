@@ -6,8 +6,8 @@ return a JSON-serialisable dict that gets surfaced back to the LLM.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,10 +33,24 @@ logger = get_logger(__name__)
 
 @dataclass
 class ToolContext:
-    """Per-call execution context for tool handlers."""
+    """Per-call execution context for tool handlers.
+
+    ``tool_events`` is an optional UI/observability sink (Streamlit console,
+    tests). Handlers themselves do not write to it — wrappers/adapters do —
+    so voice and text tool behaviour stays identical.
+    """
 
     session: AsyncSession
     call: CallContextDTO
+    tool_events: List[Dict[str, Any]] = field(default_factory=list)
+    last_diagnosis: Optional[Dict[str, Any]] = None
+
+    def record_tool(
+        self, name: str, args: Dict[str, Any], result: Dict[str, Any]
+    ) -> None:
+        self.tool_events.append(
+            {"name": name, "args": args, "result": result}
+        )
 
 
 # ---------- update_call_context ----------

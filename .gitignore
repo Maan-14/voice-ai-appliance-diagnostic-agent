@@ -8,7 +8,9 @@ __pycache__/
 *.so
 
 .env
-.env.local
+.env.*
+!.env.example
+env.txt
 .venv/
 venv/
 env/
@@ -21,6 +23,8 @@ env/
 data/
 uploads/
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 
@@ -32,3 +36,9 @@ build/
 .ruff_cache/
 .coverage
 htmlcov/
+.streamlit/
+
+# Local / editor scratch
+*.bak
+*.tmp
+*.log

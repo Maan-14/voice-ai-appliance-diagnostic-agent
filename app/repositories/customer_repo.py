@@ -1,7 +1,12 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from typing import Sequence
 
+from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
+
+from app.models.appointment import Appointment
+from app.models.call_record import CallRecord
 from app.models.customer import Customer
 from app.repositories.base import BaseRepository
 
@@ -12,6 +17,48 @@ class CustomerRepository(BaseRepository[Customer]):
     async def get_by_phone(self, phone: str) -> Customer | None:
         stmt = select(Customer).where(Customer.phone == phone)
         return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def list_with_relations(self, limit: int = 100) -> Sequence[Customer]:
+        stmt = (
+            select(Customer)
+            .options(
+                selectinload(Customer.call_records).selectinload(
+                    CallRecord.appointment
+                ),
+                selectinload(Customer.appointments).selectinload(
+                    Appointment.technician
+                ),
+                selectinload(Customer.upload_links),
+            )
+            .order_by(Customer.updated_at.desc())
+            .limit(limit)
+        )
+        return (await self.session.execute(stmt)).scalars().unique().all()
+
+    async def get_with_relations(self, customer_id: int) -> Customer | None:
+        stmt = (
+            select(Customer)
+            .where(Customer.id == customer_id)
+            .options(
+                selectinload(Customer.call_records).selectinload(
+                    CallRecord.appointment
+                ),
+                selectinload(Customer.appointments).selectinload(
+                    Appointment.technician
+                ),
+                selectinload(Customer.upload_links),
+            )
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def count_all(self) -> int:
+        return int(
+            (
+                await self.session.execute(
+                    select(func.count()).select_from(Customer)
+                )
+            ).scalar_one()
+        )
 
     async def upsert(
         self,
