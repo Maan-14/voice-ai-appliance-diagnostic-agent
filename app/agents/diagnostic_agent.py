@@ -5,6 +5,7 @@ but we also expose an Agents-SDK-based ``Agent`` for text channels (testing,
 CLI, future web chat). Both paths reuse the same handler functions so behavior
 stays consistent.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -42,9 +43,7 @@ async def update_call_context_tool(
 ) -> Dict[str, Any]:
     """Persist newly-learned facts about the caller and appliance."""
     result = await handle_update_call_context(args, ctx.context)
-    ctx.context.record_tool(
-        "update_call_context", args.model_dump(mode="json"), result
-    )
+    ctx.context.record_tool("update_call_context", args.model_dump(mode="json"), result)
     return result
 
 
@@ -55,9 +54,7 @@ async def record_diagnosis_tool(
     """Lock in the working diagnosis."""
     result = await handle_record_diagnosis(args, ctx.context)
     ctx.context.last_diagnosis = result
-    ctx.context.record_tool(
-        "record_diagnosis", args.model_dump(mode="json"), result
-    )
+    ctx.context.record_tool("record_diagnosis", args.model_dump(mode="json"), result)
     return result
 
 
@@ -67,9 +64,7 @@ async def find_slots_tool(
 ) -> Dict[str, Any]:
     """Find available technician appointment slots."""
     result = await handle_find_slots(args, ctx.context)
-    ctx.context.record_tool(
-        "find_available_slots", args.model_dump(mode="json"), result
-    )
+    ctx.context.record_tool("find_available_slots", args.model_dump(mode="json"), result)
     return result
 
 
@@ -79,9 +74,7 @@ async def book_appointment_tool(
 ) -> Dict[str, Any]:
     """Book an appointment from a chosen availability slot."""
     result = await handle_book_appointment(args, ctx.context)
-    ctx.context.record_tool(
-        "book_appointment", args.model_dump(mode="json"), result
-    )
+    ctx.context.record_tool("book_appointment", args.model_dump(mode="json"), result)
     return result
 
 
@@ -91,9 +84,7 @@ async def request_image_upload_tool(
 ) -> Dict[str, Any]:
     """Email the caller a unique image upload link."""
     result = await handle_request_image_upload(args, ctx.context)
-    ctx.context.record_tool(
-        "request_image_upload", args.model_dump(mode="json"), result
-    )
+    ctx.context.record_tool("request_image_upload", args.model_dump(mode="json"), result)
     return result
 
 

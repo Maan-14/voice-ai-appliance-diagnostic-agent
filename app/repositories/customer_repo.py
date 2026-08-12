@@ -22,12 +22,8 @@ class CustomerRepository(BaseRepository[Customer]):
         stmt = (
             select(Customer)
             .options(
-                selectinload(Customer.call_records).selectinload(
-                    CallRecord.appointment
-                ),
-                selectinload(Customer.appointments).selectinload(
-                    Appointment.technician
-                ),
+                selectinload(Customer.call_records).selectinload(CallRecord.appointment),
+                selectinload(Customer.appointments).selectinload(Appointment.technician),
                 selectinload(Customer.upload_links),
             )
             .order_by(Customer.updated_at.desc())
@@ -40,12 +36,8 @@ class CustomerRepository(BaseRepository[Customer]):
             select(Customer)
             .where(Customer.id == customer_id)
             .options(
-                selectinload(Customer.call_records).selectinload(
-                    CallRecord.appointment
-                ),
-                selectinload(Customer.appointments).selectinload(
-                    Appointment.technician
-                ),
+                selectinload(Customer.call_records).selectinload(CallRecord.appointment),
+                selectinload(Customer.appointments).selectinload(Appointment.technician),
                 selectinload(Customer.upload_links),
             )
         )
@@ -53,11 +45,7 @@ class CustomerRepository(BaseRepository[Customer]):
 
     async def count_all(self) -> int:
         return int(
-            (
-                await self.session.execute(
-                    select(func.count()).select_from(Customer)
-                )
-            ).scalar_one()
+            (await self.session.execute(select(func.count()).select_from(Customer))).scalar_one()
         )
 
     async def upsert(

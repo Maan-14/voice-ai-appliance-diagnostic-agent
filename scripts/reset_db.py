@@ -6,6 +6,7 @@ tables we own, then ``init_db`` to recreate.
 
 Run via:  python -m scripts.reset_db
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -13,6 +14,7 @@ import asyncio
 from app.config.logging_config import configure_logging, get_logger
 from app.database.session import db_manager, dispose_db, init_db
 from app.models.base import Base
+
 # Import all models so Base.metadata knows about them.
 from app.models import (  # noqa: F401
     customer,

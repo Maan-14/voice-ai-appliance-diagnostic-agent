@@ -4,6 +4,7 @@ Keyed by Twilio CallSid. Holds the ``CallContextDTO`` so agent tools and
 the websocket bridge share a single mutable view of what we've collected
 during the call. Persisted to DB at call end via the call repository.
 """
+
 from __future__ import annotations
 
 import asyncio

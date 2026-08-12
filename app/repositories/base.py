@@ -1,4 +1,5 @@
 """Generic async repository base."""
+
 from __future__ import annotations
 
 from typing import Generic, Sequence, Type, TypeVar

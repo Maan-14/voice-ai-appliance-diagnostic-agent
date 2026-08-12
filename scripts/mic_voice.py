@@ -19,6 +19,7 @@ Run:
 Tip: the mic is muted while Aria is speaking (half-duplex) so laptop
 speakers don't feed her voice back into the mic. Headphones still help.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -96,9 +97,7 @@ class MicVoiceClient:
         # indata is int16 because we configured dtype='int16'
         pcm_bytes = bytes(indata)
         if self._loop is not None:
-            asyncio.run_coroutine_threadsafe(
-                self._mic_queue.put(pcm_bytes), self._loop
-            )
+            asyncio.run_coroutine_threadsafe(self._mic_queue.put(pcm_bytes), self._loop)
 
     def _speaker_callback(self, outdata, frames, time_info, status) -> None:  # noqa: ANN001
         if status:
@@ -142,20 +141,23 @@ class MicVoiceClient:
             print("✓ Session configured")
 
             in_dev, out_dev = sd.default.device
-            with sd.InputStream(
-                device=in_dev,
-                samplerate=SAMPLE_RATE,
-                channels=CHANNELS,
-                dtype="int16",
-                blocksize=BLOCK_FRAMES,
-                callback=self._mic_callback,
-            ), sd.OutputStream(
-                device=out_dev,
-                samplerate=SAMPLE_RATE,
-                channels=CHANNELS,
-                dtype="int16",
-                blocksize=BLOCK_FRAMES,
-                callback=self._speaker_callback,
+            with (
+                sd.InputStream(
+                    device=in_dev,
+                    samplerate=SAMPLE_RATE,
+                    channels=CHANNELS,
+                    dtype="int16",
+                    blocksize=BLOCK_FRAMES,
+                    callback=self._mic_callback,
+                ),
+                sd.OutputStream(
+                    device=out_dev,
+                    samplerate=SAMPLE_RATE,
+                    channels=CHANNELS,
+                    dtype="int16",
+                    blocksize=BLOCK_FRAMES,
+                    callback=self._speaker_callback,
+                ),
             ):
                 print("🎤 Mic + speaker live — start talking. Ctrl+C to stop.\n")
                 await self._send_initial_greeting()
@@ -217,8 +219,7 @@ class MicVoiceClient:
                     "response": {
                         "output_modalities": ["audio"],
                         "instructions": (
-                            f'Say exactly this in a warm, professional tone: '
-                            f'"{REALTIME_GREETING}"'
+                            f'Say exactly this in a warm, professional tone: "{REALTIME_GREETING}"'
                         ),
                     },
                 }
@@ -323,10 +324,7 @@ class MicVoiceClient:
         assert self._ws is not None
         call_id = event.get("call_id") or event.get("item_id")
         name = event.get("name") or self._pending_calls.get(call_id, {}).get("name", "")
-        args_raw = (
-            event.get("arguments")
-            or self._pending_calls.get(call_id, {}).get("args", "{}")
-        )
+        args_raw = event.get("arguments") or self._pending_calls.get(call_id, {}).get("args", "{}")
         self._pending_calls.pop(call_id, None)
 
         try:

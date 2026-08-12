@@ -1,4 +1,5 @@
 """Image upload routes — used when the agent emails a customer an upload link."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -58,9 +59,7 @@ async def upload_form(
     link: UploadLink = Depends(resolve_active_upload_link),
 ) -> HTMLResponse:
     if link.status in (UploadStatus.UPLOADED, UploadStatus.ANALYZED):
-        return HTMLResponse(
-            "<h2>Thank you — we already have your photo.</h2>", status_code=200
-        )
+        return HTMLResponse("<h2>Thank you — we already have your photo.</h2>", status_code=200)
     return HTMLResponse(_UPLOAD_PAGE.format(token=token))
 
 

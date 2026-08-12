@@ -86,9 +86,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
 
     async def count_all(self) -> int:
         return int(
-            (
-                await self.session.execute(select(func.count()).select_from(Appointment))
-            ).scalar_one()
+            (await self.session.execute(select(func.count()).select_from(Appointment))).scalar_one()
         )
 
     async def count_open_slots(self) -> int:

@@ -3,6 +3,7 @@
 Uses the shared OpenAI client. Never raises into the chat/voice path —
 failures leave the title as "New conversation".
 """
+
 from __future__ import annotations
 
 import re

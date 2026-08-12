@@ -1,4 +1,5 @@
 """Declarative base + common mixins."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

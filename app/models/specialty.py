@@ -14,9 +14,7 @@ if TYPE_CHECKING:
 class Specialty(Base, TimestampMixin):
     __tablename__ = "specialties"
     __table_args__ = (
-        UniqueConstraint(
-            "technician_id", "appliance_type", name="uq_specialty_tech_appliance"
-        ),
+        UniqueConstraint("technician_id", "appliance_type", name="uq_specialty_tech_appliance"),
         Index("ix_specialty_tech", "technician_id"),
         Index("ix_specialty_appliance", "appliance_type"),
     )
@@ -26,8 +24,6 @@ class Specialty(Base, TimestampMixin):
         ForeignKey("technicians.id", ondelete="CASCADE"), nullable=False
     )
     appliance_type: Mapped[str] = mapped_column(String(48), nullable=False)
-    proficiency: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="standard"
-    )
+    proficiency: Mapped[str] = mapped_column(String(16), nullable=False, default="standard")
 
     technician: Mapped["Technician"] = relationship(back_populates="specialties")

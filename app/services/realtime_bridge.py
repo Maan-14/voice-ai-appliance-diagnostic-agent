@@ -9,6 +9,7 @@ Responsibilities:
   result back as a `function_call_output` so the model can continue.
 - Persist the call record to the DB on hangup.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -127,8 +128,7 @@ class RealtimeBridge:
                     "response": {
                         "output_modalities": ["audio"],
                         "instructions": (
-                            f"Say exactly this in a warm, professional tone: "
-                            f"\"{REALTIME_GREETING}\""
+                            f'Say exactly this in a warm, professional tone: "{REALTIME_GREETING}"'
                         ),
                     },
                 }
@@ -155,7 +155,8 @@ class RealtimeBridge:
                 self._from_number = custom.get("from") or start.get("from")
                 logger.info(
                     "Twilio stream started | streamSid={} callSid={}",
-                    self._stream_sid, self._call_sid,
+                    self._stream_sid,
+                    self._call_sid,
                 )
                 if self._call_sid:
                     await call_session_store.get_or_create(
@@ -166,9 +167,7 @@ class RealtimeBridge:
             elif etype == "media":
                 payload = event["media"]["payload"]
                 await self._openai_ws.send(
-                    json.dumps(
-                        {"type": "input_audio_buffer.append", "audio": payload}
-                    )
+                    json.dumps({"type": "input_audio_buffer.append", "audio": payload})
                 )
 
             elif etype == "stop":
@@ -247,9 +246,7 @@ class RealtimeBridge:
         if not self._stream_sid:
             return
         logger.debug("barge-in — clearing Twilio playback queue")
-        await self._twilio_ws.send_json(
-            {"event": "clear", "streamSid": self._stream_sid}
-        )
+        await self._twilio_ws.send_json({"event": "clear", "streamSid": self._stream_sid})
 
     # ------------------------------------------------------------------
     # Tool dispatch
@@ -350,7 +347,9 @@ class RealtimeBridge:
                 await repo.add(record)
             logger.info(
                 "CallRecord persisted | sid={} customer={} outcome={}",
-                self._call_sid, customer_id, outcome,
+                self._call_sid,
+                customer_id,
+                outcome,
             )
         except Exception:
             logger.exception("Failed to persist CallRecord | sid={}", self._call_sid)

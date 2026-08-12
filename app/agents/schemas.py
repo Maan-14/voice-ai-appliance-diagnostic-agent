@@ -4,6 +4,7 @@ These are the canonical contracts between the LLM and our backend.
 We expose their JSON schema directly to the Realtime API and to the
 OpenAI Agents SDK.
 """
+
 from __future__ import annotations
 
 from typing import List, Optional
@@ -56,7 +57,8 @@ class UpdateCallContextInput(BaseModel):
         default=None, description="Service address (street + city)."
     )
     appliance_type: Optional[str] = Field(
-        default=None, description="One of: washer, dryer, refrigerator, dishwasher, oven, hvac, microwave."
+        default=None,
+        description="One of: washer, dryer, refrigerator, dishwasher, oven, hvac, microwave.",
     )
     symptoms: Optional[List[str]] = Field(
         default=None, description="Symptoms or observed behaviors collected so far."

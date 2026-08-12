@@ -5,6 +5,7 @@ and exposed through the cached `get_settings()` accessor (and the `settings`
 module-level singleton). Every other module imports configuration from here
 so we have a single source of truth.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -40,9 +41,7 @@ class AppSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
-    url: str = Field(
-        default="sqlite+aiosqlite:///./data/voice_ai.db", alias="DATABASE_URL"
-    )
+    url: str = Field(default="sqlite+aiosqlite:///./data/voice_ai.db", alias="DATABASE_URL")
     echo: bool = Field(default=False, alias="DATABASE_ECHO")
 
     model_config = SettingsConfigDict(extra="ignore", populate_by_name=True)
@@ -51,9 +50,7 @@ class DatabaseSettings(BaseSettings):
 class OpenAISettings(BaseSettings):
     api_key: str = Field(default="", alias="OPENAI_API_KEY")
     model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
-    realtime_model: str = Field(
-        default="gpt-realtime", alias="OPENAI_REALTIME_MODEL"
-    )
+    realtime_model: str = Field(default="gpt-realtime", alias="OPENAI_REALTIME_MODEL")
     vision_model: str = Field(default="gpt-4o", alias="OPENAI_VISION_MODEL")
     # Lightweight model for ChatGPT-style conversation titles
     title_model: str = Field(default="gpt-4o-mini", alias="OPENAI_TITLE_MODEL")
@@ -75,9 +72,7 @@ class EmailSettings(BaseSettings):
     smtp_port: int = Field(default=587, alias="SMTP_PORT")
     smtp_username: str = Field(default="", alias="SMTP_USERNAME")
     smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
-    from_email: str = Field(
-        default="noreply@diagnostic.example.com", alias="SMTP_FROM_EMAIL"
-    )
+    from_email: str = Field(default="noreply@diagnostic.example.com", alias="SMTP_FROM_EMAIL")
     from_name: str = Field(default="Diagnostic Agent", alias="SMTP_FROM_NAME")
     use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
 
@@ -106,11 +101,7 @@ class BusinessSettings(BaseSettings):
 
     @property
     def supported_appliances(self) -> List[str]:
-        return [
-            a.strip().lower()
-            for a in self.supported_appliances_raw.split(",")
-            if a.strip()
-        ]
+        return [a.strip().lower() for a in self.supported_appliances_raw.split(",") if a.strip()]
 
     model_config = SettingsConfigDict(extra="ignore", populate_by_name=True)
 

@@ -41,14 +41,14 @@ class UploadLinkRepository(BaseRepository[UploadLink]):
         return (await self.session.execute(stmt)).scalars().all()
 
     async def count_by_status(self, status: UploadStatus) -> int:
-        stmt = select(func.count()).select_from(UploadLink).where(
-            UploadLink.status == status
-        )
+        stmt = select(func.count()).select_from(UploadLink).where(UploadLink.status == status)
         return int((await self.session.execute(stmt)).scalar_one())
 
     async def count_pending_analysis(self) -> int:
         """Links awaiting vision analysis (requested or uploaded, not yet analyzed)."""
-        stmt = select(func.count()).select_from(UploadLink).where(
-            UploadLink.status.in_([UploadStatus.PENDING, UploadStatus.UPLOADED])
+        stmt = (
+            select(func.count())
+            .select_from(UploadLink)
+            .where(UploadLink.status.in_([UploadStatus.PENDING, UploadStatus.UPLOADED]))
         )
         return int((await self.session.execute(stmt)).scalar_one())

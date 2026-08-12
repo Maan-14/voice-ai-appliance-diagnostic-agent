@@ -3,6 +3,7 @@
 Returns a `<Connect><Stream>` TwiML response that points Twilio Media
 Streams at our /ws/voice WebSocket, which is the bridge to OpenAI Realtime.
 """
+
 from __future__ import annotations
 
 from urllib.parse import urlparse, urlunparse
@@ -38,6 +39,7 @@ class VoiceService:
         twiml = str(response)
         logger.info(
             "Built inbound TwiML | sid={} stream_url={}",
-            call_sid, self._media_stream_ws_url(),
+            call_sid,
+            self._media_stream_ws_url(),
         )
         return twiml

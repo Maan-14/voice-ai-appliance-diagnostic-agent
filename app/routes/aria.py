@@ -1,4 +1,5 @@
 """HTTP API for the ARIA product web UI."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional

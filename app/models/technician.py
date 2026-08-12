@@ -22,9 +22,7 @@ class Technician(Base, TimestampMixin):
     email: Mapped[str] = mapped_column(String(160), nullable=False, unique=True)
     phone: Mapped[str] = mapped_column(String(32), nullable=False)
     employee_code: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
-    employment_type: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="full_time"
-    )
+    employment_type: Mapped[str] = mapped_column(String(32), nullable=False, default="full_time")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     service_areas: Mapped[List["ServiceArea"]] = relationship(
@@ -36,6 +34,4 @@ class Technician(Base, TimestampMixin):
     availabilities: Mapped[List["Availability"]] = relationship(
         back_populates="technician", cascade="all, delete-orphan"
     )
-    appointments: Mapped[List["Appointment"]] = relationship(
-        back_populates="technician"
-    )
+    appointments: Mapped[List["Appointment"]] = relationship(back_populates="technician")

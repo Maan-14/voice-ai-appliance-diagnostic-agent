@@ -12,6 +12,7 @@ Conventions:
 - Validators turning a raw request body into a typed value are named
   ``validate_<thing>``.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -38,6 +39,7 @@ logger = get_logger(__name__)
 # Service factories
 # ---------------------------------------------------------------------------
 
+
 async def get_upload_service(
     session: AsyncSession = Depends(get_session),
 ) -> UploadService:
@@ -57,6 +59,7 @@ def get_voice_service() -> VoiceService:
 # ---------------------------------------------------------------------------
 # Resolvers
 # ---------------------------------------------------------------------------
+
 
 async def resolve_active_upload_link(
     token: str,
@@ -78,6 +81,7 @@ async def resolve_active_upload_link(
 # ---------------------------------------------------------------------------
 # Validators
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class UploadedImage:
@@ -113,6 +117,4 @@ async def register_inbound_call(
     if not CallSid:
         raise HTTPException(status_code=400, detail="Missing CallSid")
     logger.info("Inbound call | sid={} from={} to={}", CallSid, From, To)
-    return await call_session_store.get_or_create(
-        call_sid=CallSid, from_number=From or None
-    )
+    return await call_session_store.get_or_create(call_sid=CallSid, from_number=From or None)

@@ -1,4 +1,5 @@
 """Scheduling service — finds matching technicians, lists slots, books appointments."""
+
 from __future__ import annotations
 
 from typing import List
@@ -60,9 +61,7 @@ class SchedulingService:
             zip_code=zip_norm, appliance_type=appliance_norm
         )
         if not techs:
-            logger.info(
-                "No technicians match | zip={} appliance={}", zip_norm, appliance_norm
-            )
+            logger.info("No technicians match | zip={} appliance={}", zip_norm, appliance_norm)
             return []
 
         tech_ids = [t.id for t in techs]
@@ -122,7 +121,10 @@ class SchedulingService:
         appt = await self.appointments.add(appt)
         logger.info(
             "Booked appointment | id={} code={} customer={} tech={} start={}",
-            appt.id, appt.confirmation_code, customer.id, appt.technician_id,
+            appt.id,
+            appt.confirmation_code,
+            customer.id,
+            appt.technician_id,
             appt.scheduled_start,
         )
 

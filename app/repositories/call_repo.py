@@ -45,13 +45,13 @@ class CallRecordRepository(BaseRepository[CallRecord]):
         )
 
     async def count_with_diagnosis(self) -> int:
-        stmt = select(func.count()).select_from(CallRecord).where(
-            CallRecord.diagnosis_summary.is_not(None)
+        stmt = (
+            select(func.count())
+            .select_from(CallRecord)
+            .where(CallRecord.diagnosis_summary.is_not(None))
         )
         return int((await self.session.execute(stmt)).scalar_one())
 
     async def count_by_outcome(self, outcome: CallOutcome) -> int:
-        stmt = select(func.count()).select_from(CallRecord).where(
-            CallRecord.outcome == outcome
-        )
+        stmt = select(func.count()).select_from(CallRecord).where(CallRecord.outcome == outcome)
         return int((await self.session.execute(stmt)).scalar_one())

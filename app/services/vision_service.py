@@ -1,4 +1,5 @@
 """Vision service — analyses uploaded appliance photos via GPT-4o."""
+
 from __future__ import annotations
 
 import base64

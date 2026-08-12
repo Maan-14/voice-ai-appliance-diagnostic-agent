@@ -6,6 +6,7 @@ you want to show data flowing into pgAdmin without setting up Twilio.
 
 Run via:  python -m scripts.demo_booking
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,7 +29,9 @@ async def main() -> None:
         )
     print(f"Agent would offer {len(slots)} slot(s):")
     for sl in slots:
-        print(f"  - id={sl.availability_id}  {sl.technician_name}  {sl.start_at:%a %b %d, %I:%M %p}")
+        print(
+            f"  - id={sl.availability_id}  {sl.technician_name}  {sl.start_at:%a %b %d, %I:%M %p}"
+        )
 
     print("\n=== 2. Jane picks the first slot — book_appointment runs ===")
     async with db_manager.session() as s:
@@ -79,7 +82,9 @@ async def main() -> None:
                 availability_id=slots[0].availability_id,
             )
         )
-    print(f"  Booked id={appt2.id}  customer_id={appt2.customer_id}  code={appt2.confirmation_code}")
+    print(
+        f"  Booked id={appt2.id}  customer_id={appt2.customer_id}  code={appt2.confirmation_code}"
+    )
 
     print("\n✓ Demo complete — check pgAdmin (or sqlite3) to inspect:")
     print("  customers       (now 2 rows)")

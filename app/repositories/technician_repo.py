@@ -52,9 +52,7 @@ class TechnicianRepository(BaseRepository[Technician]):
         return result.scalars().unique().all()
 
     async def count_active(self) -> int:
-        stmt = select(func.count()).select_from(Technician).where(
-            Technician.is_active.is_(True)
-        )
+        stmt = select(func.count()).select_from(Technician).where(Technician.is_active.is_(True))
         return int((await self.session.execute(stmt)).scalar_one())
 
     async def next_open_slot(self, technician_id: int) -> Availability | None:

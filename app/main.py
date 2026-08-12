@@ -1,4 +1,5 @@
 """FastAPI entrypoint — wires routes, lifespan, logging."""
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager

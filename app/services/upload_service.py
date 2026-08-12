@@ -1,4 +1,5 @@
 """Upload service — issues unique upload links and persists uploaded files."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -58,7 +59,9 @@ class UploadService:
         link = await self.repo.add(link)
         logger.info(
             "Issued upload link | token={} customer={} email={}",
-            token, customer.id, customer.email,
+            token,
+            customer.id,
+            customer.email,
         )
 
         return UploadLinkDTO(

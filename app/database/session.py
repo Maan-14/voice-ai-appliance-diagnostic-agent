@@ -4,6 +4,7 @@ Uses a small DatabaseManager singleton so the engine is created once and
 shared, and `get_session()` is a FastAPI dependency that yields an
 `AsyncSession` per request with proper transaction lifecycle.
 """
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -115,6 +116,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """Create tables. For real deployments use Alembic; this is for first-boot bootstrap."""
     from app.models.base import Base
+
     # Import models so they register on Base.metadata
     from app.models import (  # noqa: F401
         customer,

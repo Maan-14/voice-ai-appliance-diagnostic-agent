@@ -3,6 +3,7 @@
 Reuses DiagnosticAgent + tools + repositories — no duplicated business logic.
 Persists every text/voice turn to Conversation tables automatically.
 """
+
 from __future__ import annotations
 
 import json

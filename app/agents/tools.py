@@ -4,6 +4,7 @@ Each handler receives a validated Pydantic input and a ``ToolContext`` that
 exposes the request-scoped DB session and the active call context. Handlers
 return a JSON-serialisable dict that gets surfaced back to the LLM.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -45,15 +46,12 @@ class ToolContext:
     tool_events: List[Dict[str, Any]] = field(default_factory=list)
     last_diagnosis: Optional[Dict[str, Any]] = None
 
-    def record_tool(
-        self, name: str, args: Dict[str, Any], result: Dict[str, Any]
-    ) -> None:
-        self.tool_events.append(
-            {"name": name, "args": args, "result": result}
-        )
+    def record_tool(self, name: str, args: Dict[str, Any], result: Dict[str, Any]) -> None:
+        self.tool_events.append({"name": name, "args": args, "result": result})
 
 
 # ---------- update_call_context ----------
+
 
 async def handle_update_call_context(
     args: UpdateCallContextInput, ctx: ToolContext
@@ -81,23 +79,24 @@ async def handle_update_call_context(
 
     logger.info(
         "Call context updated | sid={} appliance={} zip={}",
-        ctx.call.call_sid, ctx.call.appliance_type, ctx.call.customer_zip,
+        ctx.call.call_sid,
+        ctx.call.appliance_type,
+        ctx.call.customer_zip,
     )
     return {"status": "ok", "context": ctx.call.model_dump(exclude={"transcript_lines"})}
 
 
 # ---------- record_diagnosis ----------
 
-async def handle_record_diagnosis(
-    args: RecordDiagnosisInput, ctx: ToolContext
-) -> Dict[str, Any]:
-    ctx.call.appliance_type = (
-        normalize_appliance(args.appliance_type) or args.appliance_type
-    )
+
+async def handle_record_diagnosis(args: RecordDiagnosisInput, ctx: ToolContext) -> Dict[str, Any]:
+    ctx.call.appliance_type = normalize_appliance(args.appliance_type) or args.appliance_type
     ctx.call.diagnosis_summary = args.diagnosis_summary
     logger.info(
         "Diagnosis recorded | sid={} severity={} causes={}",
-        ctx.call.call_sid, args.severity, args.likely_causes,
+        ctx.call.call_sid,
+        args.severity,
+        args.likely_causes,
     )
     return {
         "status": "ok",
@@ -110,9 +109,8 @@ async def handle_record_diagnosis(
 
 # ---------- find_available_slots ----------
 
-async def handle_find_slots(
-    args: FindSlotsInput, ctx: ToolContext
-) -> Dict[str, Any]:
+
+async def handle_find_slots(args: FindSlotsInput, ctx: ToolContext) -> Dict[str, Any]:
     service = SchedulingService(ctx.session)
     try:
         slots = await service.find_available_slots(
@@ -140,13 +138,10 @@ async def handle_find_slots(
 
 # ---------- book_appointment ----------
 
-async def handle_book_appointment(
-    args: BookAppointmentInput, ctx: ToolContext
-) -> Dict[str, Any]:
+
+async def handle_book_appointment(args: BookAppointmentInput, ctx: ToolContext) -> Dict[str, Any]:
     customer_phone = (
-        normalize_phone(args.customer_phone)
-        or args.customer_phone
-        or ctx.call.from_number
+        normalize_phone(args.customer_phone) or args.customer_phone or ctx.call.from_number
     )
     if not customer_phone:
         return {
@@ -178,6 +173,7 @@ async def handle_book_appointment(
 
 
 # ---------- request_image_upload ----------
+
 
 def _looks_name_derived(email: str, customer_name: str | None) -> bool:
     """Detect emails like 'ned.hassan@gmail.com' when name='Ned Hassan'.
@@ -226,7 +222,9 @@ async def handle_request_image_upload(
     if _looks_name_derived(args.customer_email, ctx.call.customer_name):
         logger.warning(
             "Suspicious name-derived email | sid={} email={} name={}",
-            ctx.call.call_sid, args.customer_email, ctx.call.customer_name,
+            ctx.call.call_sid,
+            args.customer_email,
+            ctx.call.customer_name,
         )
         return {
             "status": "needs_confirmation",
