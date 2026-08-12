@@ -71,6 +71,10 @@ def test_create_and_persist_turn():
         assert session["messages"][0]["role"] == "assistant"
         cid = session["id"]
 
+        # Greeting-only sessions must not appear in history
+        listed_empty = await svc.list_conversations(mode="text")
+        assert all(c["id"] != cid for c in listed_empty)
+
         from app.database.session import db_manager
         from app.repositories.conversation_repo import ConversationRepository
 

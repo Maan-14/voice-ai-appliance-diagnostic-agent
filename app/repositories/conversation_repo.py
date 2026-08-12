@@ -146,7 +146,21 @@ class ConversationRepository(BaseRepository[Conversation]):
         limit: int = 50,
         include_archived: bool = False,
     ) -> Sequence[Conversation]:
-        stmt = select(Conversation).options(selectinload(Conversation.customer))
+        # Only surface conversations where the user actually sent a message.
+        # Greeting-only / never-started sessions stay out of history.
+        has_user_message = (
+            select(ConversationMessage.id)
+            .where(
+                ConversationMessage.conversation_id == Conversation.id,
+                ConversationMessage.role == "user",
+            )
+            .exists()
+        )
+        stmt = (
+            select(Conversation)
+            .options(selectinload(Conversation.customer))
+            .where(has_user_message)
+        )
         if not include_archived:
             stmt = stmt.where(Conversation.archived.is_(False))
         if mode in ("text", "voice"):
