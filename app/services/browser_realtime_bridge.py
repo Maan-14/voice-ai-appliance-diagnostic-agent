@@ -52,7 +52,9 @@ class BrowserRealtimeBridge:
     async def run(self) -> None:
         await self._browser_ws.accept()
         if not (self._settings.openai.api_key or "").startswith("sk-"):
-            await self._send_browser({"type": "error", "message": "OpenAI API key is not configured."})
+            await self._send_browser(
+                {"type": "error", "message": "OpenAI API key is not configured."}
+            )
             await self._browser_ws.close()
             return
 
@@ -203,9 +205,7 @@ class BrowserRealtimeBridge:
             etype = event.get("type")
 
             if etype in ("response.output_audio.delta", "response.audio.delta"):
-                await self._send_browser(
-                    {"type": "audio", "audio": event.get("delta", "")}
-                )
+                await self._send_browser({"type": "audio", "audio": event.get("delta", "")})
 
             elif etype == "input_audio_buffer.speech_started":
                 await self._send_browser({"type": "user_speech_started"})
@@ -259,9 +259,7 @@ class BrowserRealtimeBridge:
                 if "cancel" in (msg or "").lower() and "no active" in (msg or "").lower():
                     continue
                 logger.warning("Realtime error | {}", err)
-                await self._send_browser(
-                    {"type": "error", "message": msg or "Realtime error"}
-                )
+                await self._send_browser({"type": "error", "message": msg or "Realtime error"})
 
     async def _handle_tool_call(self, event: Dict[str, Any]) -> None:
         assert self._openai_ws is not None
