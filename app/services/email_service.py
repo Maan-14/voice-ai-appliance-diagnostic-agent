@@ -1,4 +1,5 @@
 """SMTP email service — used to deliver image-upload links and confirmations."""
+
 from __future__ import annotations
 
 from email.message import EmailMessage
@@ -69,7 +70,7 @@ class EmailService:
             f"<p>To help us diagnose your{appliance_text} issue more accurately, please "
             f"upload a clear photo using the link below:</p>"
             f'<p><a href="{upload_url}">Upload your photo</a></p>'
-            f"<p style=\"color:#666;font-size:12px\">This link expires in 24 hours.</p>"
+            f'<p style="color:#666;font-size:12px">This link expires in 24 hours.</p>'
             f"<p>— Diagnostic Team</p>"
         )
         await self.send(to_address, subject, text, html)

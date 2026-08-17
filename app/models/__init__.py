@@ -7,6 +7,13 @@ from app.models.availability import Availability
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.upload_link import UploadLink, UploadStatus
 from app.models.call_record import CallOutcome, CallRecord
+from app.models.conversation import (
+    Conversation,
+    ConversationMessage,
+    ConversationMode,
+    ConversationStatus,
+    ConversationToolEvent,
+)
 
 __all__ = [
     "Base",
@@ -22,4 +29,9 @@ __all__ = [
     "UploadStatus",
     "CallOutcome",
     "CallRecord",
+    "Conversation",
+    "ConversationMessage",
+    "ConversationMode",
+    "ConversationStatus",
+    "ConversationToolEvent",
 ]

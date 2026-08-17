@@ -52,12 +52,8 @@ class Appointment(Base, TimestampMixin):
     appliance_type: Mapped[str] = mapped_column(String(48), nullable=False)
     issue_summary: Mapped[str] = mapped_column(Text, nullable=False)
 
-    scheduled_start: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    scheduled_end: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    scheduled_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    scheduled_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     status: Mapped[AppointmentStatus] = mapped_column(
         SAEnum(AppointmentStatus, name="appointment_status"),

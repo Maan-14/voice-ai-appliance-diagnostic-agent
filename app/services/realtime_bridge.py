@@ -9,6 +9,7 @@ Responsibilities:
   result back as a `function_call_output` so the model can continue.
 - Persist the call record to the DB on hangup.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -60,9 +61,9 @@ class RealtimeBridge:
         logger.info("Twilio Media Stream WebSocket accepted")
 
         url = REALTIME_URL_TMPL.format(model=self._settings.openai.realtime_model)
+        # GA Realtime: Authorization only — do not send OpenAI-Beta: realtime=v1
         headers = {
             "Authorization": f"Bearer {self._settings.openai.api_key}",
-            "OpenAI-Beta": "realtime=v1",
         }
         try:
             async with ws_connect(url, additional_headers=headers) as oai_ws:
@@ -90,20 +91,28 @@ class RealtimeBridge:
                 {
                     "type": "session.update",
                     "session": {
-                        "modalities": ["audio", "text"],
+                        "type": "realtime",
+                        "model": self._settings.openai.realtime_model,
                         "instructions": SYSTEM_PROMPT,
-                        "voice": self._settings.openai.tts_voice,
-                        "input_audio_format": "g711_ulaw",
-                        "output_audio_format": "g711_ulaw",
-                        "input_audio_transcription": {"model": "whisper-1"},
-                        "turn_detection": {
-                            "type": "server_vad",
-                            "threshold": 0.5,
-                            "prefix_padding_ms": 250,
-                            "silence_duration_ms": 600,
-                        },
+                        "output_modalities": ["audio"],
                         "tools": self._tools.realtime_specs(),
                         "tool_choice": "auto",
+                        "audio": {
+                            "input": {
+                                "format": {"type": "audio/pcmu"},
+                                "transcription": {"model": "whisper-1"},
+                                "turn_detection": {
+                                    "type": "server_vad",
+                                    "threshold": 0.5,
+                                    "prefix_padding_ms": 250,
+                                    "silence_duration_ms": 600,
+                                },
+                            },
+                            "output": {
+                                "format": {"type": "audio/pcmu"},
+                                "voice": self._settings.openai.tts_voice,
+                            },
+                        },
                     },
                 }
             )
@@ -117,10 +126,9 @@ class RealtimeBridge:
                 {
                     "type": "response.create",
                     "response": {
-                        "modalities": ["audio", "text"],
+                        "output_modalities": ["audio"],
                         "instructions": (
-                            f"Say exactly this in a warm, professional tone: "
-                            f"\"{REALTIME_GREETING}\""
+                            f'Say exactly this in a warm, professional tone: "{REALTIME_GREETING}"'
                         ),
                     },
                 }
@@ -147,7 +155,8 @@ class RealtimeBridge:
                 self._from_number = custom.get("from") or start.get("from")
                 logger.info(
                     "Twilio stream started | streamSid={} callSid={}",
-                    self._stream_sid, self._call_sid,
+                    self._stream_sid,
+                    self._call_sid,
                 )
                 if self._call_sid:
                     await call_session_store.get_or_create(
@@ -158,9 +167,7 @@ class RealtimeBridge:
             elif etype == "media":
                 payload = event["media"]["payload"]
                 await self._openai_ws.send(
-                    json.dumps(
-                        {"type": "input_audio_buffer.append", "audio": payload}
-                    )
+                    json.dumps({"type": "input_audio_buffer.append", "audio": payload})
                 )
 
             elif etype == "stop":
@@ -176,7 +183,7 @@ class RealtimeBridge:
             event = json.loads(raw)
             etype = event.get("type")
 
-            if etype == "response.audio.delta":
+            if etype in ("response.output_audio.delta", "response.audio.delta"):
                 await self._send_audio_to_twilio(event["delta"])
 
             elif etype == "input_audio_buffer.speech_started":
@@ -185,7 +192,10 @@ class RealtimeBridge:
                 # The OpenAI side will also cancel the in-flight response.
                 await self._send_clear_to_twilio()
 
-            elif etype == "response.audio_transcript.done":
+            elif etype in (
+                "response.output_audio_transcript.done",
+                "response.audio_transcript.done",
+            ):
                 transcript = event.get("transcript", "")
                 if transcript and self._call_sid:
                     ctx = await call_session_store.get(self._call_sid)
@@ -236,9 +246,7 @@ class RealtimeBridge:
         if not self._stream_sid:
             return
         logger.debug("barge-in — clearing Twilio playback queue")
-        await self._twilio_ws.send_json(
-            {"event": "clear", "streamSid": self._stream_sid}
-        )
+        await self._twilio_ws.send_json({"event": "clear", "streamSid": self._stream_sid})
 
     # ------------------------------------------------------------------
     # Tool dispatch
@@ -339,7 +347,9 @@ class RealtimeBridge:
                 await repo.add(record)
             logger.info(
                 "CallRecord persisted | sid={} customer={} outcome={}",
-                self._call_sid, customer_id, outcome,
+                self._call_sid,
+                customer_id,
+                outcome,
             )
         except Exception:
             logger.exception("Failed to persist CallRecord | sid={}", self._call_sid)

@@ -1,4 +1,5 @@
 """Prompt templates for the diagnostic voice agent."""
+
 from __future__ import annotations
 
 from app.config.settings import get_settings

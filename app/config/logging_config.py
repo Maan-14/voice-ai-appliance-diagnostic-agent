@@ -1,4 +1,5 @@
 """Centralized logging configuration."""
+
 from __future__ import annotations
 
 import logging
@@ -24,9 +25,7 @@ class _InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
 def configure_logging() -> None:

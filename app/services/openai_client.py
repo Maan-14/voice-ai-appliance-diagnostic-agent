@@ -4,6 +4,7 @@ Centralises construction of the AsyncOpenAI client so credentials and base
 configuration live in one place — every service that talks to OpenAI pulls
 its client from here rather than instantiating its own.
 """
+
 from __future__ import annotations
 
 from openai import AsyncOpenAI

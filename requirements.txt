@@ -27,6 +27,7 @@ twilio>=9.3.0,<10
 # Realtime / WebSocket / HTTP
 websockets>=13.0,<14
 httpx>=0.28.0,<0.29
+certifi>=2024.0.0
 
 # Email
 aiosmtplib>=3.0.0,<4

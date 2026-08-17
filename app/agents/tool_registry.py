@@ -12,6 +12,7 @@ The registry is consumed by:
 
 Keeping tools in one place avoids drift between the two surfaces.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -101,8 +102,7 @@ class ToolRegistry:
             # wall of Pydantic noise. The model is expected to ask the
             # customer to clarify and retry the tool call with corrected args.
             messages = [
-                f"{'.'.join(str(p) for p in err['loc'])}: {err['msg']}"
-                for err in exc.errors()
+                f"{'.'.join(str(p) for p in err['loc'])}: {err['msg']}" for err in exc.errors()
             ]
             return {
                 "status": "validation_error",

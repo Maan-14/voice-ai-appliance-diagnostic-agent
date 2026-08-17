@@ -16,9 +16,10 @@ Prereqs:
 Run:
     python -m scripts.mic_voice
 
-Tip: wear headphones. Without echo cancellation the agent will hear its
-own voice through your laptop speaker and start talking over itself.
+Tip: the mic is muted while Aria is speaking (half-duplex) so laptop
+speakers don't feed her voice back into the mic. Headphones still help.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -77,6 +78,10 @@ class MicVoiceClient:
         self._speaker_buffer: deque[bytes] = deque()
         self._pending_calls: Dict[str, Dict[str, str]] = {}
 
+        # Half-duplex: mute mic upload while agent audio is playing so the
+        # laptop speaker cannot re-enter the mic and create a feedback loop.
+        self._agent_speaking = False
+
         self._call_ctx = CallContextDTO(
             call_sid="mic-local",
             from_number="+13125550000",  # fake caller-ID for tool handlers
@@ -92,9 +97,7 @@ class MicVoiceClient:
         # indata is int16 because we configured dtype='int16'
         pcm_bytes = bytes(indata)
         if self._loop is not None:
-            asyncio.run_coroutine_threadsafe(
-                self._mic_queue.put(pcm_bytes), self._loop
-            )
+            asyncio.run_coroutine_threadsafe(self._mic_queue.put(pcm_bytes), self._loop)
 
     def _speaker_callback(self, outdata, frames, time_info, status) -> None:  # noqa: ANN001
         if status:
@@ -126,9 +129,9 @@ class MicVoiceClient:
         self._loop = asyncio.get_running_loop()
 
         url = REALTIME_URL_TMPL.format(model=self._settings.openai.realtime_model)
+        # GA Realtime: Authorization only — do not send OpenAI-Beta: realtime=v1
         headers = {
             "Authorization": f"Bearer {self._settings.openai.api_key}",
-            "OpenAI-Beta": "realtime=v1",
         }
 
         print(f"🔌 Connecting to {self._settings.openai.realtime_model}…")
@@ -137,18 +140,24 @@ class MicVoiceClient:
             await self._configure_session()
             print("✓ Session configured")
 
-            with sd.InputStream(
-                samplerate=SAMPLE_RATE,
-                channels=CHANNELS,
-                dtype="int16",
-                blocksize=BLOCK_FRAMES,
-                callback=self._mic_callback,
-            ), sd.OutputStream(
-                samplerate=SAMPLE_RATE,
-                channels=CHANNELS,
-                dtype="int16",
-                blocksize=BLOCK_FRAMES,
-                callback=self._speaker_callback,
+            in_dev, out_dev = sd.default.device
+            with (
+                sd.InputStream(
+                    device=in_dev,
+                    samplerate=SAMPLE_RATE,
+                    channels=CHANNELS,
+                    dtype="int16",
+                    blocksize=BLOCK_FRAMES,
+                    callback=self._mic_callback,
+                ),
+                sd.OutputStream(
+                    device=out_dev,
+                    samplerate=SAMPLE_RATE,
+                    channels=CHANNELS,
+                    dtype="int16",
+                    blocksize=BLOCK_FRAMES,
+                    callback=self._speaker_callback,
+                ),
             ):
                 print("🎤 Mic + speaker live — start talking. Ctrl+C to stop.\n")
                 await self._send_initial_greeting()
@@ -174,20 +183,28 @@ class MicVoiceClient:
                 {
                     "type": "session.update",
                     "session": {
-                        "modalities": ["audio", "text"],
+                        "type": "realtime",
+                        "model": self._settings.openai.realtime_model,
                         "instructions": SYSTEM_PROMPT,
-                        "voice": self._settings.openai.tts_voice,
-                        "input_audio_format": "pcm16",
-                        "output_audio_format": "pcm16",
-                        "input_audio_transcription": {"model": "whisper-1"},
-                        "turn_detection": {
-                            "type": "server_vad",
-                            "threshold": 0.5,
-                            "prefix_padding_ms": 250,
-                            "silence_duration_ms": 600,
-                        },
+                        "output_modalities": ["audio"],
                         "tools": self._tools.realtime_specs(),
                         "tool_choice": "auto",
+                        "audio": {
+                            "input": {
+                                "format": {"type": "audio/pcm", "rate": SAMPLE_RATE},
+                                "transcription": {"model": "whisper-1"},
+                                "turn_detection": {
+                                    "type": "server_vad",
+                                    "threshold": 0.5,
+                                    "prefix_padding_ms": 250,
+                                    "silence_duration_ms": 600,
+                                },
+                            },
+                            "output": {
+                                "format": {"type": "audio/pcm", "rate": SAMPLE_RATE},
+                                "voice": self._settings.openai.tts_voice,
+                            },
+                        },
                     },
                 }
             )
@@ -200,10 +217,9 @@ class MicVoiceClient:
                 {
                     "type": "response.create",
                     "response": {
-                        "modalities": ["audio", "text"],
+                        "output_modalities": ["audio"],
                         "instructions": (
-                            f'Say exactly this in a warm, professional tone: '
-                            f'"{REALTIME_GREETING}"'
+                            f'Say exactly this in a warm, professional tone: "{REALTIME_GREETING}"'
                         ),
                     },
                 }
@@ -218,6 +234,8 @@ class MicVoiceClient:
         assert self._ws is not None
         while True:
             chunk = await self._mic_queue.get()
+            if self._agent_speaking:
+                continue  # drop — don't let speaker audio re-enter as "user"
             await self._ws.send(
                 json.dumps(
                     {
@@ -227,24 +245,49 @@ class MicVoiceClient:
                 )
             )
 
+    async def _unmute_after_playback(self) -> None:
+        """Re-open the mic once local playback finishes + a short echo tail."""
+        while self._speaker_buffer:
+            await asyncio.sleep(0.05)
+        await asyncio.sleep(0.30)  # room / speaker echo tail
+        if self._speaker_buffer:
+            return  # new agent audio started; another done event will retry
+        while not self._mic_queue.empty():
+            try:
+                self._mic_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+        self._agent_speaking = False
+
     async def _openai_to_speaker(self) -> None:
         assert self._ws is not None
         async for raw in self._ws:
             event = json.loads(raw)
             etype = event.get("type")
 
-            if etype == "response.audio.delta":
+            if etype in ("response.output_audio.delta", "response.audio.delta"):
+                self._agent_speaking = True
                 self._speaker_buffer.append(base64.b64decode(event["delta"]))
 
+            elif etype in (
+                "response.output_audio.done",
+                "response.audio.done",
+                "response.done",
+            ):
+                # Audio may still be in the local speaker buffer — wait it out.
+                asyncio.create_task(self._unmute_after_playback())
+
             elif etype == "input_audio_buffer.speech_started":
-                # User just started talking — drop any agent audio still
-                # buffered for playback so we go silent immediately.
-                # The server-side will also cancel the in-flight response.
+                # Only relevant when mic is open (user barge-in). While muted
+                # we never send audio, so this should not fire from echo.
                 if self._speaker_buffer:
                     logger.debug("barge-in detected — clearing speaker buffer")
                     self._speaker_buffer.clear()
 
-            elif etype == "response.audio_transcript.done":
+            elif etype in (
+                "response.output_audio_transcript.done",
+                "response.audio_transcript.done",
+            ):
                 transcript = event.get("transcript", "")
                 if transcript:
                     print(f"🤖 Aria: {transcript}")
@@ -281,10 +324,7 @@ class MicVoiceClient:
         assert self._ws is not None
         call_id = event.get("call_id") or event.get("item_id")
         name = event.get("name") or self._pending_calls.get(call_id, {}).get("name", "")
-        args_raw = (
-            event.get("arguments")
-            or self._pending_calls.get(call_id, {}).get("args", "{}")
-        )
+        args_raw = event.get("arguments") or self._pending_calls.get(call_id, {}).get("args", "{}")
         self._pending_calls.pop(call_id, None)
 
         try:
@@ -329,7 +369,7 @@ async def main() -> None:
     print()
     print("┌──────────────────────────────────────────────────────────────┐")
     print("│  Aria — Voice mode (Mac mic + speaker, no Twilio)            │")
-    print("│  Wear headphones to avoid echo. Ctrl+C to stop.              │")
+    print("│  Mic mutes while Aria speaks. Ctrl+C to stop.                │")
     print("└──────────────────────────────────────────────────────────────┘")
 
     client = MicVoiceClient()

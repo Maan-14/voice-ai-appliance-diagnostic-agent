@@ -5,6 +5,7 @@ but we also expose an Agents-SDK-based ``Agent`` for text channels (testing,
 CLI, future web chat). Both paths reuse the same handler functions so behavior
 stays consistent.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -41,7 +42,9 @@ async def update_call_context_tool(
     ctx: RunContextWrapper[ToolContext], args: UpdateCallContextInput
 ) -> Dict[str, Any]:
     """Persist newly-learned facts about the caller and appliance."""
-    return await handle_update_call_context(args, ctx.context)
+    result = await handle_update_call_context(args, ctx.context)
+    ctx.context.record_tool("update_call_context", args.model_dump(mode="json"), result)
+    return result
 
 
 @function_tool(name_override="record_diagnosis")
@@ -49,7 +52,10 @@ async def record_diagnosis_tool(
     ctx: RunContextWrapper[ToolContext], args: RecordDiagnosisInput
 ) -> Dict[str, Any]:
     """Lock in the working diagnosis."""
-    return await handle_record_diagnosis(args, ctx.context)
+    result = await handle_record_diagnosis(args, ctx.context)
+    ctx.context.last_diagnosis = result
+    ctx.context.record_tool("record_diagnosis", args.model_dump(mode="json"), result)
+    return result
 
 
 @function_tool(name_override="find_available_slots")
@@ -57,7 +63,9 @@ async def find_slots_tool(
     ctx: RunContextWrapper[ToolContext], args: FindSlotsInput
 ) -> Dict[str, Any]:
     """Find available technician appointment slots."""
-    return await handle_find_slots(args, ctx.context)
+    result = await handle_find_slots(args, ctx.context)
+    ctx.context.record_tool("find_available_slots", args.model_dump(mode="json"), result)
+    return result
 
 
 @function_tool(name_override="book_appointment")
@@ -65,7 +73,9 @@ async def book_appointment_tool(
     ctx: RunContextWrapper[ToolContext], args: BookAppointmentInput
 ) -> Dict[str, Any]:
     """Book an appointment from a chosen availability slot."""
-    return await handle_book_appointment(args, ctx.context)
+    result = await handle_book_appointment(args, ctx.context)
+    ctx.context.record_tool("book_appointment", args.model_dump(mode="json"), result)
+    return result
 
 
 @function_tool(name_override="request_image_upload")
@@ -73,7 +83,9 @@ async def request_image_upload_tool(
     ctx: RunContextWrapper[ToolContext], args: RequestImageUploadInput
 ) -> Dict[str, Any]:
     """Email the caller a unique image upload link."""
-    return await handle_request_image_upload(args, ctx.context)
+    result = await handle_request_image_upload(args, ctx.context)
+    ctx.context.record_tool("request_image_upload", args.model_dump(mode="json"), result)
+    return result
 
 
 class DiagnosticAgentFactory:

@@ -1,4 +1,5 @@
 """Upload service — issues unique upload links and persists uploaded files."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -58,7 +59,9 @@ class UploadService:
         link = await self.repo.add(link)
         logger.info(
             "Issued upload link | token={} customer={} email={}",
-            token, customer.id, customer.email,
+            token,
+            customer.id,
+            customer.email,
         )
 
         return UploadLinkDTO(
@@ -81,7 +84,12 @@ class UploadService:
         link = await self.repo.get_by_token(token)
         if link is None:
             raise UploadError("Upload link not found")
-        if link.expires_at < utc_now():
+        now = utc_now()
+        expires_at = link.expires_at
+        # SQLite may return naive datetimes even when columns are timezone-aware.
+        if expires_at.tzinfo is None and now.tzinfo is not None:
+            expires_at = expires_at.replace(tzinfo=now.tzinfo)
+        if expires_at < now:
             link.status = UploadStatus.EXPIRED
             await self.session.flush()
             raise UploadError("Upload link expired")

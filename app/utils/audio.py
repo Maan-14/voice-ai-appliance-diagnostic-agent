@@ -6,6 +6,7 @@ so most of the time we just shuttle base64 frames unchanged. These helpers
 exist for cases where we need PCM16 conversion or to centralise base64
 encoding logic.
 """
+
 from __future__ import annotations
 
 import audioop

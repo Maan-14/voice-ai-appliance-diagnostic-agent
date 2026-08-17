@@ -1,4 +1,5 @@
 """Generic helpers — pure functions, no I/O."""
+
 from __future__ import annotations
 
 import re
@@ -11,6 +12,7 @@ import phonenumbers
 
 
 # ---------- Tokens & codes ----------
+
 
 def generate_token(nbytes: int = 32) -> str:
     return secrets.token_urlsafe(nbytes)
@@ -42,9 +44,7 @@ def normalize_phone(value: str | None, region: str = "US") -> str | None:
         parsed = phonenumbers.parse(value, region)
         if not phonenumbers.is_valid_number(parsed):
             return None
-        return phonenumbers.format_number(
-            parsed, phonenumbers.PhoneNumberFormat.E164
-        )
+        return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
     except phonenumbers.NumberParseException:
         return None
 
@@ -83,6 +83,7 @@ def normalize_appliance(value: str | None) -> str | None:
 
 
 # ---------- Time ----------
+
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)

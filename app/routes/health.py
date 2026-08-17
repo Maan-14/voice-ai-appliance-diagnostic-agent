@@ -8,8 +8,8 @@ from app.config.settings import get_settings
 router = APIRouter(tags=["health"])
 
 
-@router.get("/")
-async def root() -> dict:
+@router.get("/health")
+async def health() -> dict:
     settings = get_settings()
     return {
         "service": settings.app.name,
@@ -17,8 +17,3 @@ async def root() -> dict:
         "version": __version__,
         "status": "ok",
     }
-
-
-@router.get("/health")
-async def health() -> dict:
-    return {"status": "ok"}

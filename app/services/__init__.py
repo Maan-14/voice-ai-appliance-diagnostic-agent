@@ -6,6 +6,7 @@ directly from their submodules to avoid a circular import via
 ``app.agents.tools`` -> ``app.services.*`` -> ``app.services.realtime_bridge``
 -> ``app.agents.tool_registry``.
 """
+
 from app.services.scheduling_service import SchedulingService
 from app.services.vision_service import VisionService
 from app.services.email_service import EmailService

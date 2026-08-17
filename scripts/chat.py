@@ -11,6 +11,7 @@ Special commands during the chat:
   /reset     → clear conversation history (keeps DB session)
   /quit      → exit
 """
+
 from __future__ import annotations
 
 import asyncio
