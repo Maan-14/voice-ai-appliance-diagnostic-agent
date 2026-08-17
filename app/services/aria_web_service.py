@@ -429,6 +429,34 @@ async def archive_conversation(public_id: str) -> bool:
         return True
 
 
+async def list_appointments(
+    *,
+    status: Optional[str] = None,
+    limit: int = 50,
+) -> List[Dict[str, Any]]:
+    from app.models.appointment import AppointmentStatus
+    from app.services.scheduling_service import SchedulingService
+
+    parsed: Optional[AppointmentStatus] = None
+    if status:
+        try:
+            parsed = AppointmentStatus(status.lower())
+        except ValueError as exc:
+            raise ValueError(f"Invalid appointment status: {status!r}") from exc
+
+    async with db_manager.session() as session:
+        rows = await SchedulingService(session).list_appointments(status=parsed, limit=limit)
+        return [row.model_dump(mode="json") for row in rows]
+
+
+async def get_appointment(appointment_id: int) -> Optional[Dict[str, Any]]:
+    from app.services.scheduling_service import SchedulingService
+
+    async with db_manager.session() as session:
+        row = await SchedulingService(session).get_appointment(appointment_id)
+        return row.model_dump(mode="json") if row else None
+
+
 async def ops_summary() -> Dict[str, Any]:
     from app.repositories.appointment_repo import AppointmentRepository
     from app.services.call_session_store import call_session_store

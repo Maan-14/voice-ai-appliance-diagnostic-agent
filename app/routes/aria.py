@@ -130,6 +130,25 @@ async def archive_conversation(public_id: str) -> Dict[str, str]:
     return {"status": "archived"}
 
 
+@router.get("/appointments")
+async def list_appointments(
+    status: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> List[Dict[str, Any]]:
+    try:
+        return await svc.list_appointments(status=status, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/appointments/{appointment_id}")
+async def get_appointment(appointment_id: int) -> Dict[str, Any]:
+    data = await svc.get_appointment(appointment_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    return data
+
+
 @router.get("/ops")
 async def ops() -> Dict[str, Any]:
     return await svc.ops_summary()

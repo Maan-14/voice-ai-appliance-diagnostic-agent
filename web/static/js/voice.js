@@ -123,12 +123,11 @@ export async function renderVoice(root, { go }) {
       <header class="topbar">
         <button class="back" id="back" type="button">
           ← ARIA
-          <small>Appliance Diagnostic Agent</small>
+          <small>– Appliance Diagnostic Agent</small>
         </button>
       </header>
       <div class="voice-stage" id="stage">
-        <div class="voice-title">ARIA</div>
-        <div class="voice-sub">Appliance Diagnostic Agent</div>
+        <div class="voice-title">ARIA – Appliance Diagnostic Agent</div>
         <div class="orb-wrap"><canvas id="orb"></canvas></div>
         <div class="voice-state"><span class="dot live" id="dot"></span><span id="stateLabel">Ready</span></div>
         <div class="voice-caption muted" id="caption">Start a voice conversation to begin.</div>
@@ -332,6 +331,7 @@ export async function renderVoice(root, { go }) {
   }
 
   function handleServerMessage(msg) {
+    if (sessionEnded) return;
     const type = msg.type;
     if (type === "ready") {
       setState("listening", "Connected. Talk when you are ready.");
@@ -430,32 +430,14 @@ export async function renderVoice(root, { go }) {
     }
   }
 
-  async function destroyVad() {
-    if (silero) {
-      try {
-        silero.pause?.();
-      } catch {
-        /* ignore */
-      }
-      try {
-        await silero.destroy?.();
-      } catch {
-        /* ignore */
-      }
-    }
-    silero = null;
-    useSilero = false;
-    userSpeaking = false;
-  }
-
   async function stopAll({ persist = true } = {}) {
-    if (sessionEnded && state === "ended") return;
+    if (sessionEnded) return;
     sessionEnded = true;
     running = false;
-    setState("ending", caption.textContent || "");
+    endBtn.disabled = true;
+    setState("ending", "");
     clearPlayback();
     pendingMic = new Int16Array(0);
-    await destroyVad();
 
     try {
       if (ws && ws.readyState === WebSocket.OPEN) {
@@ -471,6 +453,9 @@ export async function renderVoice(root, { go }) {
     }
     ws = null;
 
+    // Drop the audio graph before awaiting anything — ScriptProcessor + Silero
+    // destroy/AudioContext.close can hang indefinitely and used to freeze Ending….
+    if (processor) processor.onaudioprocess = null;
     try {
       processor?.disconnect();
     } catch {
@@ -488,16 +473,47 @@ export async function renderVoice(root, { go }) {
       mediaStream.getTracks().forEach((t) => t.stop());
       mediaStream = null;
     }
-    if (audioCtx) {
+
+    const ctx = audioCtx;
+    audioCtx = null;
+    const vad = silero;
+    silero = null;
+    useSilero = false;
+    userSpeaking = false;
+
+    const duration = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    orb.stop();
+    await showEndedScreen(duration);
+
+    void finishTeardown({ persist, duration, ctx, vad });
+  }
+
+  async function finishTeardown({ persist, duration, ctx, vad }) {
+    if (vad) {
       try {
-        await audioCtx.close();
+        vad.pause?.();
       } catch {
         /* ignore */
       }
-      audioCtx = null;
+      try {
+        await Promise.race([
+          Promise.resolve(vad.destroy?.()),
+          new Promise((resolve) => setTimeout(resolve, 400)),
+        ]);
+      } catch {
+        /* ignore */
+      }
     }
-
-    const duration = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    if (ctx) {
+      try {
+        await Promise.race([
+          ctx.close(),
+          new Promise((resolve) => setTimeout(resolve, 400)),
+        ]);
+      } catch {
+        /* ignore */
+      }
+    }
     if (persist) {
       try {
         await persistSession(callContext, conversationId, duration);
@@ -505,8 +521,6 @@ export async function renderVoice(root, { go }) {
         /* ignore */
       }
     }
-    orb.stop();
-    await showEndedScreen(duration);
   }
 
   async function showEndedScreen(durationSeconds) {
@@ -585,6 +599,13 @@ export async function renderVoice(root, { go }) {
       startBtn.hidden = true;
       endBtn.hidden = false;
       await startVad();
+      if (sessionEnded) {
+        const leftover = silero;
+        silero = null;
+        useSilero = false;
+        void Promise.resolve(leftover?.destroy?.()).catch(() => {});
+        return;
+      }
       startMicPump();
       setState("listening", "Talk when you are ready.");
     } catch (err) {

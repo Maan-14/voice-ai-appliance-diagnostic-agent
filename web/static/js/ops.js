@@ -27,7 +27,10 @@ export async function renderOps(root, { go }) {
       <div class="ops-kpis">
         <div class="ops-kpi"><div class="l">Active conversations</div><div class="n">${data.active_conversations}</div></div>
         <div class="ops-kpi"><div class="l">Total calls</div><div class="n">${data.total_calls}</div></div>
-        <div class="ops-kpi"><div class="l">Appointments booked</div><div class="n">${data.appointments}</div></div>
+        <div class="ops-kpi ops-kpi-link" id="goAppts" role="link" tabindex="0">
+          <div class="l">Appointments booked</div>
+          <div class="n">${data.appointments}</div>
+        </div>
       </div>
       <div class="sec-label">Live conversations</div>
       ${
@@ -66,6 +69,7 @@ export async function renderOps(root, { go }) {
       <p style="margin-top:2rem"><button class="btn btn-primary" id="talk" type="button">Talk to ARIA</button></p>
     `;
     page.querySelector("#talk").onclick = () => go("landing");
+    page.querySelector("#goAppts").onclick = () => go("appointments");
   } catch (err) {
     page.innerHTML = `<div class="empty">Could not load operations.</div>`;
     console.error(err);

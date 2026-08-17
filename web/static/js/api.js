@@ -66,6 +66,21 @@ export async function getOps() {
   return r.json();
 }
 
+export async function listAppointments({ status, limit = 50 } = {}) {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  params.set("limit", String(limit));
+  const r = await fetch(`/api/aria/appointments?${params}`);
+  if (!r.ok) throw new Error("appointments failed");
+  return r.json();
+}
+
+export async function getAppointment(id) {
+  const r = await fetch(`/api/aria/appointments/${encodeURIComponent(id)}`);
+  if (!r.ok) throw new Error("not found");
+  return r.json();
+}
+
 export async function streamChat({
   message,
   callContext,

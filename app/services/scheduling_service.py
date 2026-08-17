@@ -128,18 +128,40 @@ class SchedulingService:
             appt.scheduled_start,
         )
 
+        return self._to_dto(appt, technician_name=slot.technician.name)
+
+    async def list_appointments(
+        self,
+        *,
+        status: AppointmentStatus | None = None,
+        limit: int = 50,
+    ) -> List[AppointmentDTO]:
+        rows = await self.appointments.list_with_relations(limit=limit, status=status)
+        return [self._to_dto(row) for row in rows]
+
+    async def get_appointment(self, appointment_id: int) -> AppointmentDTO | None:
+        row = await self.appointments.get_with_relations(appointment_id)
+        if row is None:
+            return None
+        return self._to_dto(row)
+
+    @staticmethod
+    def _to_dto(appt: Appointment, technician_name: str | None = None) -> AppointmentDTO:
+        customer = appt.customer
+        technician = appt.technician
         return AppointmentDTO(
             id=appt.id,
-            customer_id=customer.id,
-            customer_name=customer.name,
-            customer_phone=customer.phone,
-            customer_email=customer.email,
+            customer_id=appt.customer_id,
+            customer_name=customer.name if customer else None,
+            customer_phone=(customer.phone if customer else "") or "",
+            customer_email=customer.email if customer else None,
             service_address=appt.service_address,
             service_zip=appt.service_zip,
             appliance_type=appt.appliance_type,
             issue_summary=appt.issue_summary,
             technician_id=appt.technician_id,
-            technician_name=slot.technician.name,
+            technician_name=technician_name
+            or (technician.name if technician else None),
             scheduled_start=appt.scheduled_start,
             scheduled_end=appt.scheduled_end,
             status=appt.status,

@@ -8,6 +8,8 @@ import {
   renameConversation,
   streamChat,
 } from "./api.js";
+import { siteNav } from "./shell.js";
+
 function esc(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -73,7 +75,7 @@ export async function renderChat(root, { go }, openId = null) {
         <header class="topbar solid">
           <button class="back" id="back" type="button">
             ← ARIA
-            <small>Appliance Diagnostic Agent</small>
+            <small>– Appliance Diagnostic Agent</small>
           </button>
           <div class="top-right">
             <span class="chat-title" id="chatTitle">${esc(session.title || "New conversation")}</span>
@@ -101,6 +103,37 @@ export async function renderChat(root, { go }, openId = null) {
   const sideList = root.querySelector("#sideList");
   const chatTitle = root.querySelector("#chatTitle");
   const search = root.querySelector("#search");
+
+  const NEAR_BOTTOM_PX = 140;
+  let stickToBottom = true;
+  let streamRaf = 0;
+
+  function isNearBottom() {
+    return (
+      document.documentElement.scrollHeight - window.scrollY - window.innerHeight <
+      NEAR_BOTTOM_PX
+    );
+  }
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      stickToBottom = isNearBottom();
+    },
+    { passive: true }
+  );
+
+  function scrollThread(force = false) {
+    if (!force && !stickToBottom) return;
+    stickToBottom = true;
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "auto" });
+  }
+
+  function msgHtml(m, extraClass = "") {
+    const who = m.role === "user" ? "You" : "ARIA";
+    const cls = m.role === "user" ? "user" : "assistant";
+    return `<div class="msg ${cls} ${extraClass}"><div class="who">${who}</div><div class="bubble">${esc(m.content)}</div></div>`;
+  }
 
   root.querySelector("#back").onclick = () => go("landing");
   root.querySelector("#new").onclick = () => go("chat");
@@ -161,21 +194,43 @@ export async function renderChat(root, { go }, openId = null) {
   }
 
   function paint(opts = {}) {
-    thread.innerHTML = messages
-      .map((m) => {
-        const who = m.role === "user" ? "You" : "ARIA";
-        const cls = m.role === "user" ? "user" : "assistant";
-        return `<div class="msg ${cls}"><div class="who">${who}</div><div class="bubble">${esc(m.content)}</div></div>`;
-      })
-      .join("");
-    if (opts.typing) {
-      thread.innerHTML += `
-        <div class="msg assistant">
-          <div class="who">ARIA</div>
-          <div class="typing"><i></i><i></i><i></i></div>
-        </div>`;
+    thread.innerHTML = messages.map((m) => msgHtml(m)).join("");
+    if (opts.typing) showTyping();
+    scrollThread(opts.forceScroll);
+  }
+
+  function showTyping() {
+    if (thread.querySelector("#typingRow") || thread.querySelector("#streamRow")) return;
+    thread.insertAdjacentHTML(
+      "beforeend",
+      `<div class="msg assistant enter" id="typingRow">
+        <div class="who">ARIA</div>
+        <div class="typing"><i></i><i></i><i></i></div>
+      </div>`
+    );
+    scrollThread(true);
+  }
+
+  function applyStreamText(text) {
+    thread.querySelector("#typingRow")?.remove();
+    let row = thread.querySelector("#streamRow");
+    if (!row) {
+      thread.insertAdjacentHTML(
+        "beforeend",
+        `<div class="msg assistant enter" id="streamRow"><div class="who">ARIA</div><div class="bubble"></div></div>`
+      );
+      row = thread.querySelector("#streamRow");
     }
-    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    row.querySelector(".bubble").textContent = text;
+    scrollThread();
+  }
+
+  function upsertStream(text) {
+    if (streamRaf) cancelAnimationFrame(streamRaf);
+    streamRaf = requestAnimationFrame(() => {
+      streamRaf = 0;
+      applyStreamText(text);
+    });
   }
 
   paint();
@@ -203,7 +258,10 @@ export async function renderChat(root, { go }, openId = null) {
     input.style.height = "auto";
 
     messages.push({ role: "user", content: text });
-    paint({ typing: true });
+    const userNode = document.createElement("div");
+    userNode.innerHTML = msgHtml({ role: "user", content: text }, "enter");
+    thread.appendChild(userNode.firstElementChild);
+    showTyping();
 
     let assistant = { role: "assistant", content: "" };
     let started = false;
@@ -217,7 +275,7 @@ export async function renderChat(root, { go }, openId = null) {
         conversationId,
         signal: abortCtl.signal,
         onStatus() {
-          paint({ typing: true });
+          showTyping();
         },
         onDelta(delta) {
           if (!started) {
@@ -225,7 +283,7 @@ export async function renderChat(root, { go }, openId = null) {
             messages.push(assistant);
           }
           assistant.content += delta;
-          paint();
+          upsertStream(assistant.content);
         },
         onDone(payload) {
           if (!started) {
@@ -236,7 +294,12 @@ export async function renderChat(root, { go }, openId = null) {
           }
           callContext = payload.call_context;
           history = payload.history || [];
-          paint();
+          if (streamRaf) {
+            cancelAnimationFrame(streamRaf);
+            streamRaf = 0;
+          }
+          applyStreamText(assistant.content);
+          thread.querySelector("#streamRow")?.removeAttribute("id");
           refreshSidebar(search.value.trim());
         },
         onTitle(title) {
@@ -287,9 +350,10 @@ export async function renderLanding(root, { go }) {
       <header class="topbar">
         <div class="brand">
           <strong>ARIA</strong>
-          <span>Appliance Diagnostic Agent</span>
+          <span>– Appliance Diagnostic Agent</span>
         </div>
         <div class="top-right">
+          ${siteNav("landing")}
           <div class="status-pill">
             <span class="dot ${status.openai ? "" : "warn"}"></span>
             ${status.openai ? "Operational" : "Setup needed"}

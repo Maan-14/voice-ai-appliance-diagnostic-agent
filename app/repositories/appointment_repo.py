@@ -19,6 +19,17 @@ class AppointmentRepository(BaseRepository[Appointment]):
         stmt = select(Appointment).where(Appointment.confirmation_code == code)
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
+    async def get_with_relations(self, appointment_id: int) -> Appointment | None:
+        stmt = (
+            select(Appointment)
+            .where(Appointment.id == appointment_id)
+            .options(
+                selectinload(Appointment.customer),
+                selectinload(Appointment.technician),
+            )
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
     async def find_open_slots(
         self,
         technician_ids: Sequence[int],
