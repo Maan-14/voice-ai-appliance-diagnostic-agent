@@ -160,8 +160,7 @@ class SchedulingService:
             appliance_type=appt.appliance_type,
             issue_summary=appt.issue_summary,
             technician_id=appt.technician_id,
-            technician_name=technician_name
-            or (technician.name if technician else None),
+            technician_name=technician_name or (technician.name if technician else None),
             scheduled_start=appt.scheduled_start,
             scheduled_end=appt.scheduled_end,
             status=appt.status,
